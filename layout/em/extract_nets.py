@@ -101,12 +101,39 @@ def main() -> None:
     out_ly = kdb.Layout()
     out_ly.dbu = dbu
     out_top = out_ly.create_cell("em_cut")
+
+    def via_bars(region: kdb.Region, min_um: float = 0.55) -> kdb.Region:
+        """Merge each via-cut array into its solid envelope bar, min side
+        ``min_um``. PDK via cuts (0.19-0.42 um) are smaller than the FDTD
+        mesh cell (0.5 um): whether a grid intersection lands inside a cut
+        is chance, and a column with no interior grid line simply does not
+        conduct (measured: outn/vcc nets open below the band while outp
+        conducted). Solid bars are the standard EM idealization of via
+        arrays and are mesh-robust; the resistance error is negligible for
+        a verification cut."""
+        grow = int(0.35 / dbu)          # joins cuts across the array pitch
+        r = region.sized(grow)
+        r.merge()
+        out = kdb.Region()
+        half = int(min_um / 2 / dbu)
+        for poly in r.each_merged():
+            b = poly.bbox()
+            bb = kdb.Box(b.left + grow, b.bottom + grow,
+                         b.right - grow, b.top - grow)
+            cx, cy = bb.center().x, bb.center().y
+            w2 = max((bb.right - bb.left) // 2, half)
+            h2 = max((bb.top - bb.bottom) // 2, half)
+            out.insert(kdb.Box(cx - w2, cy - h2, cx + w2, cy + h2))
+        return out
+
     manifest = {"source_gds": os.path.abspath(a.gds), "nets": {}, "ports": []}
     for netname in a.nets:
         shp = net_shapes(ly, l2n, regions, netname)
         manifest["nets"][netname] = sorted(shp)
         for lname, region in shp.items():
             ln = (METALS | VIAS)[lname]
+            if lname in VIAS:
+                region = via_bars(region)
             out_top.shapes(out_ly.layer(ln, 0)).insert(region)
 
     # ground scheme: ONE common SUBGND plane under the whole cut (the same

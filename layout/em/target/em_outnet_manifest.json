@@ -1,0 +1,277 @@
+{
+ "source_gds": "/home/noorizad/spicexplorer-workspace/external/pam4-wt/em-verification/layout/em/target/pam4drv_pam4_lay.gds",
+ "nets": {
+  "outp": [
+   "Metal1",
+   "Metal2",
+   "Metal3",
+   "Metal4",
+   "Metal5",
+   "TopMetal1",
+   "TopVia1",
+   "Via1",
+   "Via2",
+   "Via3",
+   "Via4"
+  ],
+  "outn": [
+   "Metal1",
+   "Metal2",
+   "Metal3",
+   "Metal4",
+   "Metal5",
+   "TopMetal1",
+   "TopMetal2",
+   "TopVia1",
+   "TopVia2",
+   "Via1",
+   "Via2",
+   "Via3",
+   "Via4"
+  ],
+  "vcc": [
+   "Metal1",
+   "Metal2",
+   "Metal3",
+   "Metal4",
+   "Metal5",
+   "TopMetal1",
+   "TopMetal2",
+   "TopVia1",
+   "TopVia2",
+   "Via1",
+   "Via2",
+   "Via3",
+   "Via4"
+  ],
+  "sub": [
+   "Metal1"
+  ]
+ },
+ "ports": [
+  {
+   "kind": "via",
+   "rect": [
+    -15.58,
+    18.19,
+    -15.08,
+    20.16
+   ],
+   "net": "outp",
+   "role": "edge",
+   "from_layer": "Metal1",
+   "to_layer": "TopMetal1",
+   "direction": "z",
+   "num": 1,
+   "z0": 50
+  },
+  {
+   "kind": "via",
+   "rect": [
+    -15.58,
+    23.325,
+    -15.08,
+    25.325
+   ],
+   "net": "outn",
+   "role": "edge",
+   "from_layer": "Metal1",
+   "to_layer": "TopMetal2",
+   "direction": "z",
+   "num": 2,
+   "z0": 50
+  },
+  {
+   "kind": "via",
+   "rect": [
+    -15.58,
+    35.96,
+    -15.08,
+    40.96
+   ],
+   "net": "vcc",
+   "role": "edge",
+   "from_layer": "Metal1",
+   "to_layer": "TopMetal2",
+   "direction": "z",
+   "num": 3,
+   "z0": 50
+  },
+  {
+   "kind": "via",
+   "rect": [
+    -41.46,
+    13.35,
+    -35.91,
+    13.81
+   ],
+   "net": "outp",
+   "role": "coll_tap",
+   "cell": "M0",
+   "from_layer": "SUBGND",
+   "to_layer": "Metal1",
+   "direction": "z",
+   "subgnd": true,
+   "num": 4,
+   "z0": 50
+  },
+  {
+   "kind": "via",
+   "rect": [
+    -10.8,
+    13.35,
+    -5.25,
+    13.81
+   ],
+   "net": "outp",
+   "role": "coll_tap",
+   "cell": "M1",
+   "from_layer": "SUBGND",
+   "to_layer": "Metal1",
+   "direction": "z",
+   "subgnd": true,
+   "num": 5,
+   "z0": 50
+  },
+  {
+   "kind": "via",
+   "rect": [
+    19.86,
+    13.35,
+    25.41,
+    13.81
+   ],
+   "net": "outp",
+   "role": "coll_tap",
+   "cell": "L0",
+   "from_layer": "SUBGND",
+   "to_layer": "Metal1",
+   "direction": "z",
+   "subgnd": true,
+   "num": 6,
+   "z0": 50
+  },
+  {
+   "kind": "via",
+   "rect": [
+    -2.995,
+    18.44,
+    -1.485,
+    28.43
+   ],
+   "net": "outp",
+   "role": "rc_tap",
+   "from_layer": "SUBGND",
+   "to_layer": "Metal1",
+   "direction": "z",
+   "subgnd": true,
+   "num": 7,
+   "z0": 50
+  },
+  {
+   "kind": "via",
+   "rect": [
+    -25.41,
+    13.35,
+    -19.86,
+    13.81
+   ],
+   "net": "outn",
+   "role": "coll_tap",
+   "cell": "M0",
+   "from_layer": "SUBGND",
+   "to_layer": "Metal1",
+   "direction": "z",
+   "subgnd": true,
+   "num": 8,
+   "z0": 50
+  },
+  {
+   "kind": "via",
+   "rect": [
+    5.25,
+    13.35,
+    10.8,
+    13.81
+   ],
+   "net": "outn",
+   "role": "coll_tap",
+   "cell": "M1",
+   "from_layer": "SUBGND",
+   "to_layer": "Metal1",
+   "direction": "z",
+   "subgnd": true,
+   "num": 9,
+   "z0": 50
+  },
+  {
+   "kind": "via",
+   "rect": [
+    35.91,
+    13.35,
+    41.46,
+    13.81
+   ],
+   "net": "outn",
+   "role": "coll_tap",
+   "cell": "L0",
+   "from_layer": "SUBGND",
+   "to_layer": "Metal1",
+   "direction": "z",
+   "subgnd": true,
+   "num": 10,
+   "z0": 50
+  },
+  {
+   "kind": "via",
+   "rect": [
+    1.485,
+    23.59,
+    2.995,
+    28.43
+   ],
+   "net": "outn",
+   "role": "rc_tap",
+   "from_layer": "SUBGND",
+   "to_layer": "Metal1",
+   "direction": "z",
+   "subgnd": true,
+   "num": 11,
+   "z0": 50
+  },
+  {
+   "kind": "via",
+   "rect": [
+    -2.995,
+    37.725,
+    -1.485,
+    39.195
+   ],
+   "net": "vcc",
+   "role": "rc_vcc_tap",
+   "from_layer": "SUBGND",
+   "to_layer": "Metal1",
+   "direction": "z",
+   "subgnd": true,
+   "num": 12,
+   "z0": 50
+  },
+  {
+   "kind": "via",
+   "rect": [
+    1.485,
+    37.725,
+    2.995,
+    39.195
+   ],
+   "net": "vcc",
+   "role": "rc_vcc_tap",
+   "from_layer": "SUBGND",
+   "to_layer": "Metal1",
+   "direction": "z",
+   "subgnd": true,
+   "num": 13,
+   "z0": 50
+  }
+ ]
+}

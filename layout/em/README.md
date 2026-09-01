@@ -106,6 +106,23 @@ lanes — pick one:
 outputs (`target/em_out/`) are scratch — only the touchstone, the fitted
 subckt and the comparison numbers are results.
 
+## Result (layout of record, r3_s12/run_26)
+
+Full comparison in [`target/results.txt`](target/results.txt); the
+headline, at the same instrument settings as the paper's numbers:
+
+| | worst S22 ≤ 50 GHz | −10 dB edge |
+|---|---|---|
+| kpex CC (the report instrument) | −10.28 dB | 51.8 GHz |
+| openEMS FDTD, spliced (this lane) | **−10.63 dB** | **54.3 GHz** |
+
+The full-wave model confirms the paper's reflection claim with margin —
+kpex is the conservative instrument here. The gates behind that number:
+wiring C agrees at extractor level (differences = the nets deliberately
+absent from the cut), and the spliced deck's bias point matches the kpex
+deck to 0.4 % (41.96 vs 41.79 mA — the extra being the EM model's real
+metal resistance, which kpex does not charge).
+
 ## Cost
 
 One excitation per port × 13 ports; minutes to tens of minutes each at

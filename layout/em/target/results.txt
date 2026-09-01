@@ -1,0 +1,31 @@
+# EM vs kpex comparison — layout of record (r3_s12/run_26), 2026-09-01
+
+## rung 2: wiring C (extractor-level, same geometry)
+EM wiring C at 1.0 GHz (same-net ports tied, ref = sub):
+  C(outp - sub )     8.44 fF
+  C(outp - outn)     3.65 fF
+  C(outp - vcc )     0.28 fF
+  C(outn - sub )     8.92 fF
+  C(outn - vcc )     1.73 fF
+  C( vcc - sub )     7.13 fF
+kpex wiring C (all nets of the cut):
+  C( outn - vsubs)    12.09 fF
+  C( outp - vsubs)    11.25 fF
+  C(  vcc - vsubs)     8.90 fF
+  C( outn - outp )     1.69 fF
+  C(  sub - vcc  )     0.77 fF
+  C( \$39 - outp )     0.75 fF
+  C( \$37 - outp )     0.74 fF
+  C( \$41 - outp )     0.74 fF
+  C( \$38 - outn )     0.68 fF
+  C( \$40 - outn )     0.68 fF
+  C( \$42 - outn )     0.68 fF
+  C( outp - vcasc)     0.23 fF
+
+## rung 3: DC operating point (spliced vs kpex deck — the DC-anchor gate)
+       kpex: Icc 41.791 mA  power 167.2 mW
+ EM-spliced: Icc 41.958 mA  power 167.8 mW
+
+## rung 4: band-edge reflection (the claim under test)
+       kpex: S22 -10.280 dB (worst <= 50 GHz), -10 dB holds to 51.77 GHz
+ EM-spliced: S22 -10.627 dB (worst <= 50 GHz), -10 dB holds to 54.29 GHz

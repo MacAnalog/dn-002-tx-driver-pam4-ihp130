@@ -163,6 +163,9 @@ def build_layout_tier(tier: str, skip: bool = False) -> dict:
         d = os.path.join(work, "signoff", sub)
         if os.path.isdir(d):
             dst = os.path.join(out, "signoff", sub)
+            # the run logs are timestamp-named: clear the destination so a
+            # rebuild replaces the evidence generation instead of appending
+            shutil.rmtree(dst, ignore_errors=True)
             os.makedirs(dst, exist_ok=True)
             for f in os.listdir(d):
                 if f.endswith(".log") or f.endswith("_extracted.cir"):

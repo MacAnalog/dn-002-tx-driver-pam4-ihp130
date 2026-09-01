@@ -1,0 +1,11 @@
+# Solver setup of the committed EM results (run_em.py --config em_sim.yaml).
+# Every hyperparameter of the FDTD run lives here so the touchstone is
+# reproducible without CLI archaeology.
+fstart: 0.0
+fstop: 60.0e9
+numfreq: 241
+cellsize: 0.5        # um, refined mesh in conductor regions (traces are 0.55-2 um)
+margin: 50.0         # um of air/substrate margin around the cut
+energy_limit: -40.0  # dB, FDTD end criterion
+boundary: [PEC, PEC, PEC, PEC, PEC, PEC]
+# stackup: omitted -> the PDK workflow's SG13G2.xml under $PDK_ROOT (lossy substrate)

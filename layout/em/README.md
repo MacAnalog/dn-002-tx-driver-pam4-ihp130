@@ -21,9 +21,9 @@ record); `target/` carries its GDS + LVS/kpex netlists as built by
 
 | step | script | what |
 |---|---|---|
-| 1 | `extract_nets.py` | metal-only net tracing (KLayout `LayoutToNetlist`, labels name the nets); writes the selected nets' polygons to `em_outnet.gds` on native SG13G2 layer numbers + port rectangles (GDS 300+n) + SUBGND patches (GDS 210) |
+| 1 | `extract_nets.py` | metal-only net tracing (KLayout `LayoutToNetlist`, labels name the nets); writes the selected nets' polygons to `em_outnet.gds` on native SG13G2 layer numbers + port rectangles (GDS 300+n) + the ground scheme: ONE common SUBGND plane (GDS 210) under the whole cut and Activ+Cont columns tying the `sub` guard ring's Metal1 down to it |
 | 2 | `gen_ports.py` | computes the 13-port map below from the net geometry; writes `ports.yaml` |
-| 3 | `run_em.py` (via `./run_em.sh`) | openEMS FDTD through the PDK workflow (`$PDK_ROOT/ihp-sg13g2/libs.tech/openems/`), one excitation per port → `em_outnet.s13p` |
+| 3 | `run_em.py` (via `./run_em.sh`) | openEMS FDTD through the PDK workflow (`$PDK_ROOT/ihp-sg13g2/libs.tech/openems/`), one excitation per port → `em_outnet.s13p`; every solver hyperparameter loads from `--config target/em_sim.yaml` (committed = the run is reproducible) |
 | 4 | `em_to_subckt.py` | touchstone → passivity-enforced vector fit → ngspice subckt, with an explicit **DC anchor** (see below) |
 | 5 | `em_compare.py` | the checks: `--step lowfreq` (wiring C, EM vs kpex), `--step splice` + `--step op` (bias currents, spliced vs kpex), `--step s22` (band-edge S22, spliced vs kpex — the apples-to-apples number) |
 
@@ -38,12 +38,20 @@ lossy EPI + substrate. 13 ports, every one referenced to `sub`:
   pattern); this is where the bench's 50 Ω port attaches.
 * **collector taps** (P4–6 outp / P8–10 outn, cells M0|M1|L0 left→right) and
   **R_C taps** (P7/P11 out-side, P12/13 vcc-side) — short vertical via-ports
-  from an idealized local substrate contact (`SUBGND` stackup layer, drawn
-  under the pad) up to the Metal1 device pad.
+  from the common substrate-contact plane (`SUBGND` stackup layer) up to the
+  Metal1 device pad.
 
-Approximations, stated: (i) the SUBGND patches idealize the local substrate
-potential at each device — the same idealization the lumped bench makes when
-it references every port to one ground; (ii) grouping each cell's 3-finger
+All port references are galvanically common: one SUBGND plane spans the cut
+and the `sub` guard ring's Metal1 is contacted down to it through Activ+Cont
+columns (the real ring IS a substrate-tap ring; the metal-only trace drops
+its contacts). This matters — with per-port floating SUBGND islands the
+references couple only through the lossy substrate, the S-matrix goes open
+below a few GHz, and no DC anchor can be made consistent with the data (the
+fit never converges passive).
+
+Approximations, stated: (i) the SUBGND plane idealizes the substrate ground —
+the same idealization the lumped bench makes when it references every port
+to one ground node; (ii) grouping each cell's 3-finger
 collector into one tap (the pad is one merged Metal1 island anyway); (iii)
 input nets are left ideal — this cut verifies the *output* network (S22);
 an input-bus cut for S11 is the same recipe with nets `msbp/msbn/lsbp/lsbn`.
@@ -60,19 +68,24 @@ resistances before fitting; `em_compare.py --step op` then requires the
 spliced deck's supply current to match the kpex deck's before `--step s22`
 is meaningful.
 
-## Solver install (research server)
+## Solver install
 
-openEMS is built from source (no packages): conda env
-`~/local/openems-env` (python 3.11, conda-forge: cmake, compilers,
-boost-cpp, hdf5, vtk, **cgal-cpp 5.6** — CGAL 6 breaks CSXCAD — tinyxml,
-cython, numpy, h5py, matplotlib, gdspy, pyyaml, scikit-rf), then
+openEMS is built from source (no usable package exists). Two supported
+lanes — pick one:
 
-    cd ~/local/src/openEMS-Project
-    export CMAKE_PREFIX_PATH=~/local/openems-env CXXFLAGS="-fpermissive"
-    ./update_openEMS.sh ~/local/openems --python   # QCSXCAD (Qt GUI) fails: fine
-    CSXCAD_INSTALL_PATH=~/local/openems pip install --no-build-isolation CSXCAD/python openEMS/python
+* **native (script)**: `./install_openems.sh` — creates the conda env
+  (python 3.11, conda-forge; the load-bearing pins are **cgal-cpp 5.6** —
+  CGAL 6 breaks CSXCAD — and `CXXFLAGS=-fpermissive`), clones
+  openEMS-Project, builds into `~/local/openems`, installs the python
+  bindings and smoke-tests the import. QCSXCAD (the Qt GUI) failing to
+  build is expected and harmless — the lane runs headless.
+* **docker**: the spicexplorer-platform repo ships an EM toolchain image —
+  `docker compose --profile em build em` there, then run this directory's
+  scripts inside it (`docker compose run --rm em bash`; the image carries
+  the PDK openEMS workflow + stackup).
 
-`run_em.sh` sets the env + `LD_LIBRARY_PATH`. Field dumps stay off; run
+`run_em.sh` picks the native env when present (override with
+`OPENEMS_PREFIX`/`OPENEMS_ENV`) and falls back to the container's python. Field dumps stay off; run
 outputs (`target/em_out/`) are scratch — only the touchstone, the fitted
 subckt and the comparison numbers are results.
 

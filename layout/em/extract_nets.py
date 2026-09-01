@@ -31,6 +31,8 @@ VIA_STACK = {"Via1": ("Metal1", "Metal2"), "Via2": ("Metal2", "Metal3"),
              "TopVia1": ("Metal5", "TopMetal1"), "TopVia2": ("TopMetal1", "TopMetal2")}
 TEXT_DT = 25  # net-label datatype on the metal layer number
 PORT_LAYER_BASE = 300  # must stay clear of every SG13G2 stackup layer (SUBGND is 210!)
+SUBGND = 210  # stackup substrate-contact layer (LOWLOSS, z -3.75..0)
+ACTIV, CONT = 1, 6  # stackup Activ (z 0..0.4) + contact (z 0.4..1.04) layers
 
 
 def trace(gds: str) -> tuple[kdb.Layout, kdb.LayoutToNetlist, dict]:
@@ -75,6 +77,9 @@ def main() -> None:
     ap.add_argument("--nets", nargs="+", required=True)
     ap.add_argument("--out")
     ap.add_argument("--ports", help="ports.yaml (adds port rectangles on 300+num)")
+    ap.add_argument("--gnd-nets", nargs="*", default=["sub"],
+                    help="nets whose Metal1 is contacted down to the common "
+                         "SUBGND plane (Activ+Cont columns under their shapes)")
     ap.add_argument("--candidates", action="store_true",
                     help="print per-net leaf islands (Metal1/Metal2 polygons) to pick tap ports")
     a = ap.parse_args()
@@ -104,6 +109,23 @@ def main() -> None:
             ln = (METALS | VIAS)[lname]
             out_top.shapes(out_ly.layer(ln, 0)).insert(region)
 
+    # ground scheme: ONE common SUBGND plane under the whole cut (the same
+    # single-ground idealization the lumped bench makes) + Activ/Cont columns
+    # under the gnd nets' Metal1, so the guard ring is galvanically tied to
+    # that plane (the real ring IS a substrate-contact ring; the metal-only
+    # trace dropped its contacts). Without this the port references are
+    # floating islands that only couple through the lossy substrate, and the
+    # S-matrix goes open below a few GHz — contradicting the DC anchor.
+    for netname in a.gnd_nets:
+        shp = net_shapes(ly, l2n, regions, netname)
+        for lname in ("Metal1",):
+            for layer_num in (ACTIV, CONT):
+                out_top.shapes(out_ly.layer(layer_num, 0)).insert(
+                    shp.get(lname, kdb.Region()))
+    bb = out_top.dbbox()
+    plane = kdb.DBox(bb.left - 5, bb.bottom - 5, bb.right + 5, bb.top + 5)
+    out_top.shapes(out_ly.layer(SUBGND, 0)).insert(plane)
+
     if a.ports:
         import yaml
         ports = yaml.safe_load(open(a.ports))["ports"]
@@ -111,10 +133,6 @@ def main() -> None:
             x1, y1, x2, y2 = p["rect"]
             box = kdb.DBox(x1, y1, x2, y2)
             out_top.shapes(out_ly.layer(PORT_LAYER_BASE + p["num"], 0)).insert(box)
-            if p.get("subgnd"):
-                # idealized local substrate contact under the port (stackup
-                # layer SUBGND = GDS 210, LOWLOSS column through the EPI)
-                out_top.shapes(out_ly.layer(210, 0)).insert(box)
             manifest["ports"].append(p)
 
     out_ly.write(a.out)

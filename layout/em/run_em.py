@@ -28,6 +28,9 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("gds")
     ap.add_argument("ports_yaml")
+    ap.add_argument("--config", default="",
+                    help="YAML with any of the flags below as keys (CLI overrides "
+                         "it; commit it next to the results for reproducibility)")
     ap.add_argument("--stackup", default=os.path.join(WORKFLOW, "SG13G2.xml"),
                     help="stackup XML (SG13G2.xml = lossy substrate; _nosub for smoke runs)")
     ap.add_argument("--out", default="em_out")
@@ -38,8 +41,20 @@ def main() -> None:
                     help="refined mesh cell (um) in conductor regions; traces here are 0.55-2 um")
     ap.add_argument("--margin", type=float, default=50.0)
     ap.add_argument("--energy-limit", type=float, default=-40.0)
+    ap.add_argument("--boundary", nargs=6, default=["PEC"] * 6,
+                    metavar=("XMIN", "XMAX", "YMIN", "YMAX", "ZMIN", "ZMAX"),
+                    help="the six openEMS boundary conditions")
     ap.add_argument("--preview", action="store_true", help="geometry/mesh preview only, no solve")
     ap.add_argument("--ports", default="", help="comma list: excite only these port numbers (default all)")
+    cfg_path = ap.parse_known_args()[0].config
+    if cfg_path:
+        cfg = yaml.safe_load(open(cfg_path)) or {}
+        unknown = set(cfg) - {a_.dest for a_ in ap._actions}
+        if unknown:
+            raise SystemExit(f"unknown keys in {cfg_path}: {sorted(unknown)}")
+        if "ports" in cfg and isinstance(cfg["ports"], list):
+            cfg["ports"] = ",".join(str(x) for x in cfg["ports"])
+        ap.set_defaults(**cfg)
     a = ap.parse_args()
 
     sys.path.insert(0, WORKFLOW)
@@ -101,7 +116,7 @@ def main() -> None:
     for pnum in excite:
         FDTD = openEMS(EndCriteria=np.exp(a.energy_limit / 10 * np.log(10)))
         FDTD.SetGaussExcite((a.fstart + a.fstop) / 2, (a.fstop - a.fstart) / 2)
-        FDTD.SetBoundaryCond(['PEC'] * 6)
+        FDTD.SetBoundaryCond(list(a.boundary))
         simulation_setup.setupSimulation([pnum], sim_ports, FDTD, materials_list,
                                          dielectrics_list, metals_list, allpolygons,
                                          max_cellsize, a.cellsize, a.margin, unit,

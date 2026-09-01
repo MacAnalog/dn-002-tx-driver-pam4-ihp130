@@ -6,7 +6,7 @@ contacts and devices excluded, so a net's shapes stop at the device pads)
 with KLayout's LayoutToNetlist, names the nets from the generator's text
 labels, and writes the selected nets' polygons to a new GDS on their native
 SG13G2 layer numbers (the numbers the PDK openEMS stackup XML expects).
-Port rectangles from ports.yaml are added on GDS layer (200+portnum, 0).
+Port rectangles from ports.yaml are added on GDS layer (300+portnum, 0).
 
     .venv/bin/python extract_nets.py --gds dut.gds --nets outp outn sub vcc \
         --ports ports.yaml --out em_out.gds
@@ -30,7 +30,7 @@ VIA_STACK = {"Via1": ("Metal1", "Metal2"), "Via2": ("Metal2", "Metal3"),
              "Via3": ("Metal3", "Metal4"), "Via4": ("Metal4", "Metal5"),
              "TopVia1": ("Metal5", "TopMetal1"), "TopVia2": ("TopMetal1", "TopMetal2")}
 TEXT_DT = 25  # net-label datatype on the metal layer number
-PORT_LAYER_BASE = 200
+PORT_LAYER_BASE = 300  # must stay clear of every SG13G2 stackup layer (SUBGND is 210!)
 
 
 def trace(gds: str) -> tuple[kdb.Layout, kdb.LayoutToNetlist, dict]:
@@ -74,7 +74,7 @@ def main() -> None:
     ap.add_argument("--gds", required=True)
     ap.add_argument("--nets", nargs="+", required=True)
     ap.add_argument("--out")
-    ap.add_argument("--ports", help="ports.yaml (adds port rectangles on 200+num)")
+    ap.add_argument("--ports", help="ports.yaml (adds port rectangles on 300+num)")
     ap.add_argument("--candidates", action="store_true",
                     help="print per-net leaf islands (Metal1/Metal2 polygons) to pick tap ports")
     a = ap.parse_args()

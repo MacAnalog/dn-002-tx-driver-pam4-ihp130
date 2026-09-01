@@ -21,7 +21,7 @@ record); `target/` carries its GDS + LVS/kpex netlists as built by
 
 | step | script | what |
 |---|---|---|
-| 1 | `extract_nets.py` | metal-only net tracing (KLayout `LayoutToNetlist`, labels name the nets); writes the selected nets' polygons to `em_outnet.gds` on native SG13G2 layer numbers + port rectangles (GDS 200+n) + SUBGND patches (GDS 210) |
+| 1 | `extract_nets.py` | metal-only net tracing (KLayout `LayoutToNetlist`, labels name the nets); writes the selected nets' polygons to `em_outnet.gds` on native SG13G2 layer numbers + port rectangles (GDS 300+n) + SUBGND patches (GDS 210) |
 | 2 | `gen_ports.py` | computes the 13-port map below from the net geometry; writes `ports.yaml` |
 | 3 | `run_em.py` (via `./run_em.sh`) | openEMS FDTD through the PDK workflow (`$PDK_ROOT/ihp-sg13g2/libs.tech/openems/`), one excitation per port → `em_outnet.s13p` |
 | 4 | `em_to_subckt.py` | touchstone → passivity-enforced vector fit → ngspice subckt, with an explicit **DC anchor** (see below) |

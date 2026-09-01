@@ -29,6 +29,9 @@
    "Via3",
    "Via4"
   ],
+  "sub": [
+   "Metal1"
+  ],
   "vcc": [
    "Metal1",
    "Metal2",
@@ -43,9 +46,6 @@
    "Via2",
    "Via3",
    "Via4"
-  ],
-  "sub": [
-   "Metal1"
   ]
  },
  "ports": [

@@ -21,7 +21,7 @@ import yaml
 
 PDK_ROOT = os.environ.get("PDK_ROOT", os.path.expanduser("~/local/pdks"))
 WORKFLOW = os.path.join(PDK_ROOT, "ihp-sg13g2/libs.tech/openems/openems_ihp_sg13g2/workflow")
-PORT_LAYER_BASE = 200
+PORT_LAYER_BASE = 300
 
 
 def main() -> None:
@@ -76,6 +76,15 @@ def main() -> None:
         sim_ports.add_port(sp)
 
     materials_list, dielectrics_list, metals_list = stackup_reader.read_substrate(a.stackup)
+    # the workflow treats a polygon as a port ONLY if its layer is absent from
+    # the stackup; a collision (e.g. 200+10 = 210 = SUBGND) silently swallows
+    # the port rect as metal and the excitation run never injects any energy
+    for p in sim_ports.ports:
+        clash = metals_list.getbylayernumber(p.source_layernum)
+        if clash is not None:
+            raise SystemExit(
+                f"port {p.portnumber}: source layer {p.source_layernum} is stackup "
+                f"layer {getattr(clash, 'name', clash)} — move PORT_LAYER_BASE")
     layernumbers = metals_list.getlayernumbers()
     layernumbers.extend(sim_ports.portlayers)
     allpolygons = gds_reader.read_gds(a.gds, layernumbers, purposelist=[0],

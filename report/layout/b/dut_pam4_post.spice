@@ -3,7 +3,7 @@
 *** -----------------------------------------------------
 ***     Extraction Engine: KPEX/2.5D
 ***     Technology: ihp_sg13g2
-***     Date: 2026-08-18 20:30:56
+***     Date: 2026-09-01 00:02:55
 *********************************************************
 
 .SUBCKT pam4drv_pam4_lay sub lsbp vcmb lsbn msbp msbn tmsb0 tlsb0 tmsb1 vcasc outp outn vcc
@@ -21,13 +21,13 @@ XQ_11 outp vcasc \$53 sub npn13G2 Nx=3
 XQ_12 outn vcasc \$54 sub npn13G2 Nx=3
 XR_13 vcmb lsbp sub rsil w=0.5u l=2.29u m=1
 XR_14 vcmb lsbn sub rsil w=0.5u l=2.29u m=1
-XR_15 vcmb msbp sub rsil w=0.5u l=2.29u m=1
-XR_16 vcmb msbn sub rsil w=0.5u l=2.29u m=1
-XR_17 tmsb0 \$10 sub rsil w=5u l=0.5u m=1
-XR_18 tmsb0 \$11 sub rsil w=5u l=0.5u m=1
-XR_19 tlsb0 \$12 sub rsil w=5u l=0.5u m=1
-XR_20 tlsb0 \$13 sub rsil w=5u l=0.5u m=1
-XR_21 tmsb1 \$14 sub rsil w=5u l=0.5u m=1
+XR_15 tlsb0 \$12 sub rsil w=5u l=0.5u m=1
+XR_16 tmsb0 \$10 sub rsil w=5u l=0.5u m=1
+XR_17 tlsb0 \$13 sub rsil w=5u l=0.5u m=1
+XR_18 tmsb1 \$14 sub rsil w=5u l=0.5u m=1
+XR_19 vcmb msbp sub rsil w=0.5u l=2.29u m=1
+XR_20 vcmb msbn sub rsil w=0.5u l=2.29u m=1
+XR_21 tmsb0 \$11 sub rsil w=5u l=0.5u m=1
 XR_22 tmsb1 \$15 sub rsil w=5u l=0.5u m=1
 XR_23 outp vcc sub rsil w=1.4u l=8.71u m=1
 XR_24 outn vcc sub rsil w=1.4u l=8.71u m=1
@@ -166,7 +166,7 @@ Cext_132 sub tmsb1 3.62451f
 Cext_133 sub vcasc 7.68566f
 Cext_134 sub vcc 10.4834f
 Cext_135 sub vcmb 11.5065f
-XCdeg_r0 \$10 \$11 cap_cmim w=3.59u l=3.59u
-XCdeg_r1 \$12 \$13 cap_cmim w=3.59u l=3.59u
+XCdeg_r0 \$12 \$13 cap_cmim w=3.59u l=3.59u
+XCdeg_r1 \$10 \$11 cap_cmim w=3.59u l=3.59u
 XCdeg_r2 \$14 \$15 cap_cmim w=3.59u l=3.59u
 .ENDS pam4drv_pam4_lay

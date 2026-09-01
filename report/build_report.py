@@ -30,7 +30,7 @@ Outputs (all under report/):
   work/            scratch (git-ignored)
 
 Run (uv env, PDK/kpex per local.mk):   make report          (~15 min on the research server)
-Options: --skip-build (reuse work/), --tiers a,b,d,e, --nsym 200
+Options: --skip-build (reuse work/), --tiers a,b,d,f, --nsym 200
 """
 from __future__ import annotations
 
@@ -90,9 +90,11 @@ TIERS = {
     "d": dict(label="(d) co-design round 2, v3 (Alg. 1 through SpiceXplorer)", short="(d) v3, co-designed",
               layout=dict(gen_layout.V3_LAYOUT), bias=dict(gen_layout.V3_BIASES), elec=None),
     "e": dict(label="(e) co-design round 3 accepted point v4 (p/n balance objective)", short="(e) v4, co-designed",
+              layout=dict(gen_layout.V4_LAYOUT), bias=dict(gen_layout.V4_BIASES), elec=None),
+    "f": dict(label="(f) co-design round 3 best-score point (r3_s12/run_26, the paper's design of record)", short="(f) record, co-designed",
               layout=dict(gen_layout.FINAL_LAYOUT), bias=dict(gen_layout.FINAL_BIASES), elec=None),
 }
-COL = {"a": "#7f7f7f", "b": "#1f77b4", "c": "#ff7f0e", "d": "#d62728", "e": "#2ca02c"}
+COL = {"a": "#7f7f7f", "b": "#1f77b4", "c": "#ff7f0e", "d": "#d62728", "e": "#2ca02c", "f": "#9467bd"}
 SPEC = [("lsb_gain", "gain LSB (dB)", "≥ 2.2"), ("msb_gain", "gain MSB (dB)", "≥ 8.2"),
         ("weight", "DAC weight (dB)", "≥ 5.0"), ("bw_msb", "BW MSB (GHz)", "≥ 50"),
         ("bw_lsb", "BW LSB (GHz)", "≥ 50"), ("s11", "S11 ≤ 32 GHz (dB)", "≤ −10"),
@@ -102,9 +104,13 @@ SPEC = [("lsb_gain", "gain LSB (dB)", "≥ 2.2"), ("msb_gain", "gain MSB (dB)", 
         ("pn_gain_imb_db", "p/n gain imbalance ≤ 48 GHz (dB)", "audit"),
         ("pn_phase_imb_deg", "p/n phase imbalance ≤ 48 GHz (°)", "audit"),
         ("cm_leak_dbc", "diff→CM conversion ≤ 48 GHz (dBc)", "audit"),
+        ("cm_dm_db", "CM→diff conversion ≤ 50 GHz (dB)", "audit"),
         ("ic_ma_per_finger", "I_C per emitter finger (mA)", "< 3 (model card)"),
         ("eye_rlm", "48 GBd eye RLM", "—"), ("eye_min_v", "48 GBd min eye opening (V)", "—"),
-        ("eye_vpp", "48 GBd output swing (Vpp)", "—")]
+        ("eye_vpp", "48 GBd output swing (Vpp)", "—"),
+        ("eye_fs_min_v", "48 GBd full-swing eye min opening (V)", "—"),
+        ("eye_fs_min_width_ps", "48 GBd full-swing eye min width (ps)", "—"),
+        ("eye_fs_rlm", "48 GBd full-swing eye RLM", "—")]
 PAPER_MEAS = {"lsb_gain": "3.2", "msb_gain": "9.2", "weight": "6.0", "bw_msb": "51", "bw_lsb": ">67",
               "s11": "<−10", "s11_edge_ghz": "32", "s22": "<−10", "s22_edge_ghz": "50", "swing": "2.1",
               "power": "192", "area_um2": "11 300"}
@@ -157,6 +163,9 @@ def build_layout_tier(tier: str, skip: bool = False) -> dict:
         d = os.path.join(work, "signoff", sub)
         if os.path.isdir(d):
             dst = os.path.join(out, "signoff", sub)
+            # the run logs are timestamp-named: clear the destination so a
+            # rebuild replaces the evidence generation instead of appending
+            shutil.rmtree(dst, ignore_errors=True)
             os.makedirs(dst, exist_ok=True)
             for f in os.listdir(d):
                 if f.endswith(".log") or f.endswith("_extracted.cir"):
@@ -211,7 +220,8 @@ def run_sparams(tier: str, ref: str | None, dp: dl.DriverParams) -> dict:
     out["s22"] = dict(f=r22["f_ghz"], s22=r22["s22_db"])
     rb = dl.run_ac_balance("pam4", drive="msb", dp=dp, dut_ref=ref, pts_per_dec=100, timeout_s=900)
     assert rb["ok"], rb.get("log", "")[-1500:]
-    out["bal"] = dict(f=rb["f_ghz"], g=rb["gain_imb_db"], ph=rb["phase_imb_deg"], cm=rb["cm_leak_dbc"])
+    out["bal"] = dict(f=rb["f_ghz"], g=rb["gain_imb_db"], ph=rb["phase_imb_deg"], cm=rb["cm_leak_dbc"],
+                      acd=rb.get("cm_dm_db"))
     d = dl.run_dc("pam4", drive="both", vd_max_mv=900.0, step_mv=15.0, dp=dp, dut_ref=ref, timeout_s=900)
     assert d["ok"], d.get("log", "")[-1500:]
     out["dc"] = dict(vd=d["vd_v"], vo=d["vout_diff_v"])
@@ -266,7 +276,7 @@ def eye_metrics(t, v, t0_ns, baud):
 
 # ------------------------------------------------------------------ figures
 def fig_eyes(EYE: dict, out: str) -> dict:
-    tiers = [k for k in "abcde" if k in EYE]
+    tiers = [k for k in "abcdef" if k in EYE]
     n = len(tiers)
     fig, axs = plt.subplots(1, n, figsize=(3.6 * n, 3.4), sharey=True, squeeze=False)
     cmap = LinearSegmentedColormap.from_list("eye", ["#ffffff", "#c6dbef", "#4292c6", "#08306b", "#000000"])
@@ -315,7 +325,7 @@ def fig_eyes(EYE: dict, out: str) -> dict:
 
 def fig_sparams(SP: dict, out: str) -> None:
     fig, axs = plt.subplots(1, 3, figsize=(11, 3.3))
-    for k in "abcde":
+    for k in "abcdef":
         if k not in SP:
             continue
         s = SP[k]
@@ -341,7 +351,7 @@ def fig_sparams(SP: dict, out: str) -> None:
 
 def fig_dc_balance(SP: dict, out_dc: str, out_bal: str) -> None:
     fig, ax = plt.subplots(figsize=(4.2, 3.2))
-    for k in "abcde":
+    for k in "abcdef":
         if k in SP:
             ax.plot(SP[k]["dc"]["vd"], SP[k]["dc"]["vo"], color=COL[k], lw=1.3, label=TIERS[k]["short"])
     ax.axhline(1.05, color="k", lw=0.5, ls=":"); ax.axhline(-1.05, color="k", lw=0.5, ls=":")
@@ -349,7 +359,7 @@ def fig_dc_balance(SP: dict, out_dc: str, out_bal: str) -> None:
     ax.set_title("DC transfer (swing spec ≥ 2.1 V$_{pp}$ = ±1.05 V)"); ax.legend(fontsize=7)
     fig.tight_layout(); fig.savefig(out_dc + ".png", dpi=220); fig.savefig(out_dc + ".pdf"); plt.close(fig)
     fig, axs = plt.subplots(1, 3, figsize=(11, 3.0))
-    for k in "abcde":
+    for k in "abcdef":
         if k not in SP:
             continue
         b = SP[k]["bal"]
@@ -391,7 +401,7 @@ def fig_layouts(tiers: list[str], M: dict, out: str, annotate_d: bool = False) -
     plt.close(fig)
 
 
-def fig_layout_annotated(out: str, tier: str = "e") -> None:
+def fig_layout_annotated(out: str, tier: str = "f") -> None:
     """The accepted layout on KLayout's own render, every optimizer knob drawn
     from the generator's geometry record."""
     p = gen_layout.LayoutParams(**TIERS[tier]["layout"])
@@ -433,15 +443,15 @@ def fmt(v, key):
         return f"{v:.0f}"
     if key in ("power", "bw_msb", "bw_lsb", "s11_edge_ghz", "s22_edge_ghz"):
         return f"{v:.1f}"
-    if key == "cm_leak_dbc" and v < -150:
+    if key in ("cm_leak_dbc", "cm_dm_db") and v < -150:
         return "< −150 (ideal symmetry)"
-    if key in ("eye_rlm", "pn_phase_imb_deg", "cm_leak_dbc"):
+    if key in ("eye_rlm", "pn_phase_imb_deg", "cm_leak_dbc", "cm_dm_db"):
         return f"{v:.3f}" if key == "eye_rlm" else f"{v:.1f}"
     return f"{v:.2f}"
 
 
 def write_tables(M: dict, out_md: str) -> None:
-    tiers = [k for k in "abcde" if k in M]
+    tiers = [k for k in "abcdef" if k in M]
     lines = ["| metric | spec | paper meas. | " + " | ".join(TIERS[k]["short"] for k in tiers) + " |",
              "|---|---|---|" + "---|" * len(tiers)]
     for key, name, spec in SPEC:
@@ -485,9 +495,10 @@ def wiring_c(post: str) -> dict:
 # ------------------------------------------------------------------ main
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--tiers", default="a,b,c,d,e")
+    ap.add_argument("--tiers", default="a,b,c,d,e,f")
     ap.add_argument("--skip-build", action="store_true", help="reuse work/<tier>/metrics.json + netlists")
     ap.add_argument("--nsym", type=int, default=200)
+    ap.add_argument("--fullswing-nsym", type=int, default=10000)
     ap.add_argument("--no-eye", action="store_true")
     ap.add_argument("--reuse-eye", action="store_true", help="re-plot eyes from data/eye_<tier>.npz")
     a = ap.parse_args()
@@ -527,6 +538,8 @@ def main() -> None:
         inb = rb["f_ghz"] <= 48.0
         m["pn_gain_imb_db"] = float(np.abs(rb["gain_imb_db"][inb]).max()); m["pn_phase_imb_deg"] = float(np.abs(rb["phase_imb_deg"][inb]).max())
         m["cm_leak_dbc"] = measure_post._band_max(rb["f_ghz"], rb["cm_leak_dbc"], 48.0)
+        if rb.get("cm_dm_db") is not None:
+            m["cm_dm_db"] = measure_post._band_max(rb["f_ghz"], rb["cm_dm_db"], 50.0)
         d = dl.run_dc("pam4", drive="both", vd_max_mv=900.0, step_mv=15.0, dp=dp, dut_ref=None, timeout_s=900)
         m["swing"] = float(d["vout_diff_v"].max() - d["vout_diff_v"].min())
         deck_txt, hold0, _ = dl.tb_bias("pam4", dl._resolve_dut_ref("pam4", dp, None), dp=dp, probes=["v(outp)", "i(Vcc)"])
@@ -545,8 +558,14 @@ def main() -> None:
                    np.column_stack([s["msb"]["f"], s["msb"]["s21"], s["lsb"]["s21"], s["msb"]["s11"], s["lsb"]["s11"],
                                     np.interp(s["msb"]["f"], s["s22"]["f"], s["s22"]["s22"])]),
                    delimiter=",", header="f_ghz,s21_msb_db,s21_lsb_db,s11_msb_db,s11_lsb_db,s22_db", comments="")
-        np.savetxt(os.path.join(DATA, f"balance_{k}.csv"), np.column_stack([s["bal"]["f"], s["bal"]["g"], s["bal"]["ph"], s["bal"]["cm"]]),
-                   delimiter=",", header="f_ghz,gain_imb_db,phase_imb_deg,cm_leak_dbc", comments="")
+        bal_cols = [s["bal"]["f"], s["bal"]["g"], s["bal"]["ph"], s["bal"]["cm"]]
+        bal_hdr = "f_ghz,gain_imb_db,phase_imb_deg,cm_leak_dbc"
+        if s["bal"]["acd"] is not None:
+            bal_cols.append(s["bal"]["acd"]); bal_hdr += ",cm_dm_db"
+            if k in M:
+                M[k]["cm_dm_db"] = measure_post._band_max(s["bal"]["f"], s["bal"]["acd"], 50.0)
+        np.savetxt(os.path.join(DATA, f"balance_{k}.csv"), np.column_stack(bal_cols),
+                   delimiter=",", header=bal_hdr, comments="")
         np.savetxt(os.path.join(DATA, f"dc_{k}.csv"), np.column_stack([s["dc"]["vd"], s["dc"]["vo"]]),
                    delimiter=",", header="vd_source_v,vout_diff_v", comments="")
     fig_sparams(SP, os.path.join(FIGS, "fig_sparams"))
@@ -578,11 +597,53 @@ def main() -> None:
         for k, m in met.items():
             M[k].update(eye_rlm=m["rlm"], eye_min_v=min(m["eyes"]), eye_vpp=m["vpp"], eye_levels_v=m["levels"], eye_openings_v=m["eyes"])
         print(f"   eyes done ({time.time() - t0:.0f} s)", flush=True)
+    # full-swing eye for the record tier (paper Fig.: 900 mVpp in, 10k symbols)
+    fs_tier = "f" if "f" in tiers else None
+    if fs_tier and not a.no_eye:
+        fs_npz = os.path.join(DATA, f"eye_{fs_tier}_fullswing.npz")
+        if a.reuse_eye and os.path.exists(fs_npz):
+            z = np.load(fs_npz)
+            t, v, t0e, baud = z["t"], z["v"], float(z["t0_ns"]), float(z["baud"])
+        else:
+            random.seed(7)
+            msbf = [random.randint(0, 1) for _ in range(a.fullswing_nsym)]
+            lsbf = [random.randint(0, 1) for _ in range(a.fullswing_nsym)]
+            print(f"== full-swing eye: tier {fs_tier}, {a.fullswing_nsym} symbols at 900 mVpp", flush=True)
+            dp = dp_of(TIERS[fs_tier])
+            t, v, t0e, baud, log = dl.run_eye(msb_bits=msbf, lsb_bits=lsbf, dp=dp, dut_ref=REF[fs_tier],
+                                              baud_hz=48e9, vswing_mv=900.0, timeout_s=4 * 3600)
+            assert t is not None, log[-2000:]
+            np.savez_compressed(fs_npz, t=t, v=v, t0_ns=t0e, baud=baud)
+        _, _, em = eye_metrics(t, v, t0e, baud)
+        # eye WIDTH (paper definition): per eye, the horizontal span between the
+        # last threshold crossing left of the eye centre and the first right of
+        # it, thresholds midway between adjacent levels, folded to one UI
+        T = 1.0 / baud
+        t_an0 = t0e * 1e-9
+        win = t >= t_an0 + 2 * T
+        tg, vg = t[win], v[win]
+        dtp = float(np.median(np.diff(tg)))
+        ph = (tg - t_an0 - em["centre_s"] + T / 2) % T
+        widths = []
+        for i in range(3):
+            thr = (em["levels"][i] + em["levels"][i + 1]) / 2
+            sg = np.sign(vg - thr)
+            idx = np.nonzero(sg[:-1] * sg[1:] < 0)[0]
+            frac = (thr - vg[idx]) / (vg[idx + 1] - vg[idx])
+            pc = (ph[idx] + frac * dtp) % T
+            widths.append(float(pc[pc > T / 2].min() - pc[pc < T / 2].max()))
+        M[fs_tier].update(eye_fs_rlm=em["rlm"], eye_fs_min_v=min(em["eyes"]),
+                          eye_fs_vpp=em["vpp"], eye_fs_openings_v=em["eyes"],
+                          eye_fs_width_ps=[w * 1e12 for w in widths],
+                          eye_fs_min_width_ps=min(widths) * 1e12,
+                          eye_fs_nsym=a.fullswing_nsym)
+        print(f"   full-swing eye: openings {[f'{e*1e3:.0f}' for e in em['eyes']]} mV, "
+              f"min width {min(widths)*1e12:.1f} ps, RLM {em['rlm']:.4f}", flush=True)
     # layout figures (KLayout renders)
     lay_tiers = [k for k in tiers if TIERS[k]["layout"] is not None]
     if lay_tiers:
         fig_layouts(lay_tiers, M, os.path.join(FIGS, "fig_layouts"))
-        last = "e" if "e" in lay_tiers else "d"
+        last = ("f" if "f" in lay_tiers else "e" if "e" in lay_tiers else "d")
         if "b" in lay_tiers and last in lay_tiers:
             fig_layouts(["b", last], M, os.path.join(FIGS, "fig_layout_b_vs_d"))
         if last in lay_tiers:

@@ -1,0 +1,37 @@
+* TB[pam4] bias point (ramp and hold)
+Vcc vcc 0 PWL(0 0 8n 4)
+Vcasc vcasc 0 PWL(0 0 8n 3.3427)
+Vcmb vcmb 0 PWL(0 0 8n 1.9)
+Vblsb blsb 0 PWL(0 0 8n 13.9958)
+Vbmsb bmsb 0 PWL(0 0 8n 13.9958)
+XDUT lsbp lsbn msbp msbn outp outn vcc vcasc vcmb blsb bmsb pam4drv_pam4
+Rlp outp vcc 50
+Rln outn vcc 50
+Vslsbp slsbp 0 PWL(0 0 8n 1.9)
+Vslsbn slsbn 0 PWL(0 0 8n 1.9)
+Rslsbp slsbp lsbp 50
+Rslsbn slsbn lsbn 50
+Vsmsbp smsbp 0 PWL(0 0 8n 1.9)
+Vsmsbn smsbn 0 PWL(0 0 8n 1.9)
+Rsmsbp smsbp msbp 50
+Rsmsbn smsbn msbn 50
+* post-layout adapter: pam4drv_pam4_lay -> pam4drv_pam4 schematic ports
+.subckt pam4drv_pam4 lsbp lsbn msbp msbn outp outn vcc vcasc vcmb blsb bmsb
+Xlay sub msbn lsbp vcmb lsbn msbp tmsb0 tmsb1 tlsb0 vcasc outp outn vcc pam4drv_pam4_lay
+Gtlsb0 tlsb0 0 blsb 0 1m
+Gtmsb0 tmsb0 0 bmsb 0 1m
+Gtmsb1 tmsb1 0 bmsb 0 1m
+Vsub sub 0 DC 0
+.ends pam4drv_pam4
+.include "../../../report/layout/f/dut_pam4_post.spice"
+.lib "cornerRES.lib" res_typ
+.lib "cornerCAP.lib" cap_typ
+
+.lib "cornerHBT.lib" hbt_typ
+.options gmin=1e-12 reltol=1e-3
+.control
+tran 0.0233333n 14n uic
+wrdata bias.csv v(outp) i(Vcc)
+.endc
+.GLOBAL GND
+.end

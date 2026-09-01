@@ -822,7 +822,15 @@ def tb_ac_balance(dut: str, dut_ref: str, *, drive: str = "msb",
     differential drive (a1 = -a2) the two output waves are
     2*Vp = 0.5*(S31 - S32) and 2*Vn = 0.5*(S41 - S42) — the same columns as the
     legacy .ac node-voltage version (method="algebra"), so the imbalance and
-    diff->CM numbers are identical by construction."""
+    diff->CM numbers are identical by construction.
+
+    The sp deck also writes the mixed-mode CM->DM conversion gain
+    A_cd = |Sdc21| = |0.5*(S31 + S32 - S41 - S42)| in dB (CM drive in, DM out)
+    — free from the same S-matrix, no second stimulus needed. The algebra
+    method cannot produce it from the differential-drive deck (a CM drive is a
+    different stimulus: the one sign flip on the n-side source), so the column
+    exists only for method="sp"; the sign-flip twin deck is the independent
+    cross-check (verification/)."""
     deck = tb_ac(dut, dut_ref, drive=drive, dp=dp, corner=corner,
                  f_start_hz=f_start_hz, f_stop_hz=f_stop_hz,
                  pts_per_dec=pts_per_dec, method=method, out_csv="ac.csv")
@@ -830,13 +838,17 @@ def tb_ac_balance(dut: str, dut_ref: str, *, drive: str = "msb",
         post = ("let vp = 0.5*(S_3_1 - S_3_2)\nlet vn = 0.5*(S_4_1 - S_4_2)\n"
                 "let gpdb = db(vp)\nlet gndb = db(vn)\n"
                 "let php = ph(vp)*180/pi\nlet phn = ph(vn)*180/pi\n"
-                "let cmdb = db(mag(vp+vn)+1e-15)\nlet ddb = db(vp-vn)\n")
+                "let cmdb = db(mag(vp+vn)+1e-15)\nlet ddb = db(vp-vn)\n"
+                "let sdc = 0.5*(S_3_1 + S_3_2 - S_4_1 - S_4_2)\n"
+                "let acddb = db(mag(sdc)+1e-15)\n")
+        cols = "gpdb gndb php phn cmdb ddb acddb"
     else:
         post = ("let gpdb = db(2*v(outp))\nlet gndb = db(2*v(outn))\n"
                 "let php = ph(v(outp))*180/pi\nlet phn = ph(v(outn))*180/pi\n"
                 "let cmdb = db(mag(v(outp)+v(outn))+1e-15)\nlet ddb = db(v(outp)-v(outn))\n")
+        cols = "gpdb gndb php phn cmdb ddb"
     return deck.replace("wrdata ac.csv s21db s11db",
-                        post + f"wrdata {out_csv} gpdb gndb php phn cmdb ddb")
+                        post + f"wrdata {out_csv} {cols}")
 
 
 def run_ac_balance(dut: str, *, drive: str = "msb",
@@ -855,8 +867,11 @@ def run_ac_balance(dut: str, *, drive: str = "msb",
     gp, gn, php, phn = data[:, 1], data[:, 3], data[:, 5], data[:, 7]
     cm, dd = data[:, 9], data[:, 11]
     dph = (php - phn) % 360.0 - 180.0                  # 0 = ideal (Vn = -Vp)
-    return {"ok": 1.0, "f_ghz": data[:, 0] / 1e9, "gain_imb_db": gp - gn,
-            "phase_imb_deg": dph, "cm_leak_dbc": cm - dd}
+    out = {"ok": 1.0, "f_ghz": data[:, 0] / 1e9, "gain_imb_db": gp - gn,
+           "phase_imb_deg": dph, "cm_leak_dbc": cm - dd}
+    if data.shape[1] > 13:                             # sp deck: A_cd column
+        out["cm_dm_db"] = data[:, 13]
+    return out
 
 
 def run_dc(dut: str, *, drive: str = "both", dp: DriverParams | None = None,

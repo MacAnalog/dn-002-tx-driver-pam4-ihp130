@@ -1,0 +1,49 @@
+* TB[pam4] .op/sp S21+S11 sweep drive=msb (ngspice-45)
+Vcc vcc 0 DC 4
+Vcasc vcasc 0 DC 3.3427
+Vcmb vcmb 0 DC 1.9
+Vblsb blsb 0 DC 13.9958
+Vbmsb bmsb 0 DC 13.9958
+XDUT lsbp lsbn msbp msbn outp outn vcc vcasc vcmb blsb bmsb pam4drv_pam4
+Vlp outp vcc DC 0 AC 0 portnum 3 z0 50
+Vln outn vcc DC 0 AC 0 portnum 4 z0 50
+Vslsbp slsbp 0 DC 1.9
+Vslsbn slsbn 0 DC 1.9
+Rslsbp slsbp lsbp 50
+Rslsbn slsbn lsbn 50
+Vsmsbp msbp 0 DC 1.9 AC 1 portnum 1 z0 50
+Vsmsbn msbn 0 DC 1.9 AC 1 portnum 2 z0 50
+* post-layout adapter: pam4drv_pam4_lay -> pam4drv_pam4 schematic ports
+.subckt pam4drv_pam4 lsbp lsbn msbp msbn outp outn vcc vcasc vcmb blsb bmsb
+Xlay sub msbn lsbp vcmb lsbn msbp tmsb0 tmsb1 tlsb0 vcasc outp outn vcc pam4drv_pam4_lay
+Gtlsb0 tlsb0 0 blsb 0 1m
+Gtmsb0 tmsb0 0 bmsb 0 1m
+Gtmsb1 tmsb1 0 bmsb 0 1m
+Vsub sub 0 DC 0
+.ends pam4drv_pam4
+.include "../../../report/layout/f/dut_pam4_post.spice"
+.lib "cornerRES.lib" res_typ
+.lib "cornerCAP.lib" cap_typ
+
+.lib "cornerHBT.lib" hbt_typ
+.options gmin=1e-12 reltol=1e-3
+.control
+op
+print v(outp) v(outn) i(Vcc)
+sp dec 100 1e+08 1e+11
+let s21db = db(0.5*(S_3_1 - S_3_2 - S_4_1 + S_4_2))
+let s11db = db(0.5*(S_1_1 - S_1_2 - S_2_1 + S_2_2))
+let vp = 0.5*(S_3_1 - S_3_2)
+let vn = 0.5*(S_4_1 - S_4_2)
+let gpdb = db(vp)
+let gndb = db(vn)
+let php = ph(vp)*180/pi
+let phn = ph(vn)*180/pi
+let cmdb = db(mag(vp+vn)+1e-15)
+let ddb = db(vp-vn)
+let sdc = 0.5*(S_3_1 + S_3_2 - S_4_1 - S_4_2)
+let acddb = db(mag(sdc)+1e-15)
+wrdata balance.csv gpdb gndb php phn cmdb ddb acddb
+.endc
+.GLOBAL GND
+.end

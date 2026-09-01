@@ -1,4 +1,4 @@
-* Extracted by KLayout with SG13G2 LVS runset on : 18/08/2026 20:32
+* Extracted by KLayout with SG13G2 LVS runset on : 01/09/2026 00:03
 
 .SUBCKT pam4drv_pam4_lay sub msbp msbn lsbp vcmb lsbn tmsb0 tmsb1 tlsb0 vcasc
 + outp outn vcc
@@ -8,21 +8,21 @@ Q$4 outp vcasc \$53 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
 + AC=19.283334p PC=19.31u NE=3 m=3
 Q$7 outn vcasc \$52 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
 + AC=19.283334p PC=19.31u NE=3 m=3
-Q$10 outp vcasc \$51 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
+Q$10 outn vcasc \$50 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
 + AC=19.283334p PC=19.31u NE=3 m=3
-Q$13 outn vcasc \$50 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
+Q$13 outp vcasc \$51 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
 + AC=19.283334p PC=19.31u NE=3 m=3
-Q$16 \$50 msbn \$11 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
+Q$16 outp vcasc \$49 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
 + AC=19.283334p PC=19.31u NE=3 m=3
 Q$19 \$54 lsbn \$15 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
 + AC=19.283334p PC=19.31u NE=3 m=3
-Q$22 \$49 msbp \$10 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
+Q$22 \$50 msbn \$11 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
 + AC=19.283334p PC=19.31u NE=3 m=3
-Q$25 outp vcasc \$49 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
+Q$25 \$51 msbp \$12 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
 + AC=19.283334p PC=19.31u NE=3 m=3
-Q$28 \$51 msbp \$12 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
+Q$28 \$53 lsbp \$14 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
 + AC=19.283334p PC=19.31u NE=3 m=3
-Q$31 \$53 lsbp \$14 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
+Q$31 \$49 msbp \$10 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
 + AC=19.283334p PC=19.31u NE=3 m=3
 Q$34 \$52 msbn \$13 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
 + AC=19.283334p PC=19.31u NE=3 m=3

@@ -1,0 +1,78 @@
+* TB[pam4] .op/ac S21+S11 sweep drive=msb (ngspice-45)
+Vcc vcc 0 DC 4
+Vcasc vcasc 0 DC 3.25
+Vcmb vcmb 0 DC 1.9
+Vblsb blsb 0 DC 16
+Vbmsb bmsb 0 DC 16
+XDUT lsbp lsbn msbp msbn outp outn vcc vcasc vcmb blsb bmsb pam4drv_pam4
+Rlp outp vcc 50
+Rln outn vcc 50
+Vslsbp slsbp 0 DC 1.9
+Vslsbn slsbn 0 DC 1.9
+Rslsbp slsbp lsbp 50
+Rslsbn slsbn lsbn 50
+Vsmsbp smsbp 0 DC 1.9 AC 0.5
+Vsmsbn smsbn 0 DC 1.9 AC 0.5
+Rsmsbp smsbp msbp 50
+Rsmsbn smsbn msbn 50
+* DUT: pam4drv_pam4 — 1 LSB cell(s) + 2 MSB cell(s), npn13G2 Nx=3
+.subckt pam4drv_pam4 lsbp lsbn msbp msbn outp outn vcc vcasc vcmb blsb bmsb
+* --- cell L0 ---
+XQ1L0 c1L0 lsbp e1L0 0 npn13G2 Nx=3
+XQ2L0 c2L0 lsbn e2L0 0 npn13G2 Nx=3
+XQ3L0 outp vcasc c1L0 0 npn13G2 Nx=3
+XQ4L0 outn vcasc c2L0 0 npn13G2 Nx=3
+RE1L0 e1L0 tlsb0 2.5
+RE2L0 e2L0 tlsb0 2.5
+CdegL0 e1L0 e2L0 20f
+GtailL0 tlsb0 0 blsb 0 1m
+
+* --- cell M0 ---
+XQ1M0 c1M0 msbp e1M0 0 npn13G2 Nx=3
+XQ2M0 c2M0 msbn e2M0 0 npn13G2 Nx=3
+XQ3M0 outp vcasc c1M0 0 npn13G2 Nx=3
+XQ4M0 outn vcasc c2M0 0 npn13G2 Nx=3
+RE1M0 e1M0 tmsb0 2.5
+RE2M0 e2M0 tmsb0 2.5
+CdegM0 e1M0 e2M0 20f
+GtailM0 tmsb0 0 bmsb 0 1m
+
+* --- cell M1 ---
+XQ1M1 c1M1 msbp e1M1 0 npn13G2 Nx=3
+XQ2M1 c2M1 msbn e2M1 0 npn13G2 Nx=3
+XQ3M1 outp vcasc c1M1 0 npn13G2 Nx=3
+XQ4M1 outn vcasc c2M1 0 npn13G2 Nx=3
+RE1M1 e1M1 tmsb1 2.5
+RE2M1 e2M1 tmsb1 2.5
+CdegM1 e1M1 e2M1 20f
+GtailM1 tmsb1 0 bmsb 0 1m
+
+Rcp outp vcc 50
+Rcn outn vcc 50
+Rblsbp lsbp vcmb 50
+Rblsbn lsbn vcmb 50
+Rbmsbp msbp vcmb 50
+Rbmsbn msbn vcmb 50
+.ends pam4drv_pam4
+
+.lib "cornerHBT.lib" hbt_typ
+.options gmin=1e-12 reltol=1e-3
+.control
+op
+print v(outp) v(outn) i(Vcc)
+ac dec 100 1e+08 1e+11
+let vodiff = v(outp)-v(outn)
+let vidiff = v(msbp)-v(msbn)
+let s21db = db(2*vodiff)
+let zin = vidiff*100/(1-vidiff)
+let s11db = db((zin-100)/(zin+100))
+let gpdb = db(2*v(outp))
+let gndb = db(2*v(outn))
+let php = ph(v(outp))*180/pi
+let phn = ph(v(outn))*180/pi
+let cmdb = db(mag(v(outp)+v(outn))+1e-15)
+let ddb = db(mag(v(outp)-v(outn))+1e-15)
+wrdata cmdm_alg.csv gpdb gndb php phn cmdb ddb
+.endc
+.GLOBAL GND
+.end

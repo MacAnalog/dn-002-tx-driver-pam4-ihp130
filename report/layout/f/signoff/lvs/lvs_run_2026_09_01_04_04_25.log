@@ -1,0 +1,3 @@
+01-Sep-2026 00:04:25 | INFO    | Your Klayout version is: KLayout 0.30.5
+01-Sep-2026 00:04:25 | INFO    | Running SG13G2 LVS checks on design /home/noorizad/spicexplorer-workspace/external/pam4-wt/paper-record/report/work/f/dut_pam4.gds on cell pam4drv_pam4_lay
+01-Sep-2026 00:04:28 | INFO    | Total execution time 2.885218620300293s

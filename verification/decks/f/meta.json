@@ -1,0 +1,134 @@
+{
+ "tier": "f",
+ "label": "(f) co-design round 3 best-score point (r3_s12/run_26, the paper's design of record)",
+ "vcc": 4.0,
+ "cell": {
+  "nx": 3,
+  "tail_ma": 13.9958,
+  "re_ohm": 3.09,
+  "cdeg_ff": 16.84,
+  "rc_ohm": 51.77,
+  "rb_ohm": 48.32,
+  "vcasc": 3.3427,
+  "vcm_in": 1.9
+ },
+ "baud_hz": 48000000000.0,
+ "nsym": 200,
+ "decks": {
+  "ac_lsb": {
+   "out": "ac_lsb.csv",
+   "cols": "f, sdd21_db, f, sdd11_db",
+   "gives": [
+    "lsb_gain",
+    "bw_lsb",
+    "s11_lsb",
+    "s11",
+    "s11_edge_ghz",
+    "weight",
+    "bw"
+   ]
+  },
+  "ac_msb": {
+   "out": "ac_msb.csv",
+   "cols": "f, sdd21_db, f, sdd11_db",
+   "gives": [
+    "msb_gain",
+    "bw_msb",
+    "s11_msb",
+    "s11",
+    "s11_edge_ghz",
+    "weight",
+    "bw"
+   ]
+  },
+  "s22": {
+   "out": "s22.csv",
+   "cols": "f, sdd22_db",
+   "gives": [
+    "s22",
+    "s22_edge_ghz"
+   ]
+  },
+  "balance": {
+   "out": "balance.csv",
+   "cols": "f, gp_db, f, gn_db, f, php_deg, f, phn_deg, f, cm_db, f, dd_db, f, acd_db",
+   "gives": [
+    "pn_gain_imb_db",
+    "pn_phase_imb_deg",
+    "cm_leak_dbc",
+    "cm_dm_db"
+   ]
+  },
+  "dc": {
+   "out": "dc.csv",
+   "cols": "vd, vout_diff, vd, i_vcc",
+   "gives": [
+    "swing"
+   ]
+  },
+  "bias": {
+   "out": "bias.csv",
+   "cols": "t, v(outp), t, i(Vcc)",
+   "hold0_ns": 11.0,
+   "t_end_ns": 14.0,
+   "gives": [
+    "power",
+    "ic_ma_per_finger"
+   ]
+  },
+  "eye": {
+   "out": "eye.csv",
+   "cols": "t, vout_diff",
+   "data_start_ns": 10.0,
+   "t_end_ns": 15.166666666666666,
+   "gives": [
+    "eye_rlm",
+    "eye_min_v",
+    "eye_vpp",
+    "eye_levels_v",
+    "eye_openings_v"
+   ]
+  },
+  "eye_fs": {
+   "out": "eye_fs.csv",
+   "cols": "t, vout_diff",
+   "data_start_ns": 10.0,
+   "t_end_ns": 219.33333333333331,
+   "nsym": 10000,
+   "vswing_mv": 900.0,
+   "gives": [
+    "eye_fs_min_v",
+    "eye_fs_min_width_ps",
+    "eye_fs_rlm"
+   ]
+  },
+  "ac_msb_alg": {
+   "out": "ac_msb_alg.csv",
+   "cols": "f, s21_db, f, s11_db",
+   "gives": [
+    "cross-check (legacy .ac algebra): msb_gain, bw_msb, s11_msb, s11_edge"
+   ]
+  },
+  "s22_alg": {
+   "out": "s22_alg.csv",
+   "cols": "f, s22_db",
+   "gives": [
+    "cross-check (legacy .ac algebra): s22, s22_edge_ghz"
+   ]
+  },
+  "balance_alg": {
+   "out": "balance_alg.csv",
+   "cols": "as balance.csv (no acd col)",
+   "gives": [
+    "cross-check (legacy .ac node voltages): pn_gain_imb_db, pn_phase_imb_deg, cm_leak_dbc"
+   ]
+  },
+  "cmdm_alg": {
+   "out": "cmdm_alg.csv",
+   "cols": "as balance_alg.csv; A_cd = ddb + 6.02 dB",
+   "gives": [
+    "cross-check (CM drive, .ac node voltages): cm_dm_db"
+   ]
+  }
+ }
+}

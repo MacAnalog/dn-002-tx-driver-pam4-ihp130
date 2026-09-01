@@ -6,6 +6,7 @@ on the original edge-fed floorplan, reconstructed via the LayoutParams
 defaults). AFTER is selectable:
 
     --after v4   (default) the layout of record `gen_layout.FINAL_LAYOUT`
+                 (since the round-3 close-out: r3_s12/run_26, the paper's point)
                  (co-design round 3)                  -> before_after.png
     --after v3   the co-design round-2 point `gen_layout.V3_LAYOUT`
                                                       -> before_after_v3.png

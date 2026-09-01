@@ -1058,7 +1058,7 @@ V3_LAYOUT = dict(nx=3, rc_ohm=46.51, rb_ohm=49.92, re_ohm=3.24,
                  drop_layer="Metal2")
 V3_BIASES = {"vcc": 4.0, "vcasc": 3.31, "vcmb": 1.9, "tail_ma": 15.93}
 
-# v4 = the point accepted from co-design round 3 (codesign/results/r3/
+# v4 = the point ACCEPTED at the end of co-design round 3 (codesign/results/r3/
 # summary.json, island s23 trial 30 — the argmax-reward trial of the
 # ACCEPTANCE sub-box: the round-3 J (p/n balance + power + area rewarded on
 # top of the r2 reflection rewards) searched only where BOTH reflections stay
@@ -1073,7 +1073,7 @@ V3_BIASES = {"vcc": 4.0, "vcasc": 3.31, "vcmb": 1.9, "tail_ma": 15.93}
 # found them neutral-to-worse — the balance came from the continuous knobs
 # (out_gap 6.37 -> 4.81, rc_gap 2.0 -> 2.48, re_w 4.61 -> 6.13, stack_w
 # 1.52 -> 1.11, rc_sep 4.64 -> 6.32) plus the electrical point.
-FINAL_LAYOUT = dict(nx=3, rc_ohm=47.86, rb_ohm=51.03, re_ohm=3.54,
+V4_LAYOUT = dict(nx=3, rc_ohm=47.86, rb_ohm=51.03, re_ohm=3.54,
                     cdeg_ff=20.95, re_w=6.13, rc_w=1.13, rb_w=0.55,
                     gap_x=6.48, row_gap=1.25, cell_gap=5.2, out_gap=4.81,
                     out_w=1.84, w_out=1.75, out_off=1.76, rc_sep=6.32,
@@ -1081,7 +1081,29 @@ FINAL_LAYOUT = dict(nx=3, rc_ohm=47.86, rb_ohm=51.03, re_ohm=3.54,
                     stack_w=1.11, c_strip=2, bus_trim=1, out_split=1,
                     sub_bus=1, in_order=0, cell_order=1, input_feed="center",
                     in_bus_layer="Metal4", drop_layer="Metal2")
-FINAL_BIASES = {"vcc": 4.0, "vcasc": 3.2151, "vcmb": 1.9, "tail_ma": 15.4977}
+V4_BIASES = {"vcc": 4.0, "vcasc": 3.2151, "vcmb": 1.9, "tail_ma": 15.4977}
+
+# The layout of record = the TCAS paper's round-3 design point: r3_s12/run_26,
+# the round-3 search's best-score trial (score 11.515, the max of the round;
+# codesign/results/r3/trials.jsonl). v4 above was the acceptance sub-box
+# argmax-reward pick; the paper presents the best-score point instead and the
+# repo record follows the paper. At the block's report instrument (kpex CC,
+# tech-default halo 8; report/data/tables.md):
+#   S11 -10.16 dB at 32 GHz (-10 dB holds to 32.7)   S22 -10.28 at 50 (to 51.8)
+#   gain 2.38 / 8.36 dB, BW 61.1 GHz, swing 2.11 Vpp, power 167.2 mW @ 4 V
+#   area 7268 um2   p/n balance 0.017 dB / 0.25 deg / -52.3 dBc diff->CM
+# The electrical point is the low-tail corner (13.996 mA, R_C 51.77): ~18 mW
+# below v4 with ~8 dB better diff->CM, paid for in swing (2.11 vs 2.24) and
+# S22 margin (-10.28 vs -10.72).
+FINAL_LAYOUT = dict(nx=3, rc_ohm=51.77, rb_ohm=48.32, re_ohm=3.09,
+                    cdeg_ff=16.84, re_w=5.66, rc_w=1.51, rb_w=0.68,
+                    gap_x=5.65, row_gap=1.91, cell_gap=4.21, out_gap=3.18,
+                    out_w=1.97, w_out=1.68, out_off=2.06, rc_sep=4.48,
+                    rc_gap=2.87, in_off=2.18, in_bus_gap=3.26, sub_off=1.33,
+                    stack_w=1.47, c_strip=2, bus_trim=1, out_split=1,
+                    sub_bus=1, in_order=0, cell_order=1, input_feed="center",
+                    in_bus_layer="Metal4", drop_layer="Metal2")
+FINAL_BIASES = {"vcc": 4.0, "vcasc": 3.3427, "vcmb": 1.9, "tail_ma": 13.9958}
 
 
 def main() -> None:

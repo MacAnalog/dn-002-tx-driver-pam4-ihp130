@@ -6,7 +6,8 @@
     python ../../extract.py <tier>                               # -> the numbers
 
 Tiers:  a = schematic (nominal sizing)      b = first-pass layout (v1 floorplan, nominal sizing)
-        c = v2 layout of record             d = v3 co-designed (paper column (c) / README v3)
+        c = v2 (2026-08-09 record)          d = v3 co-designed (paper "Round 2")
+        f = r3_s12/run_26, the layout of record (paper "Round 3")
 
 Each layout tier's deck includes the converted kpex post-layout netlist that
 `make report` produced (report/layout/<tier>/dut_pam4_post.spice) through the
@@ -82,15 +83,30 @@ def write_alg_twins(d: str, ref: str, dp, meta: dict) -> None:
     meta["decks"]["ac_msb_alg"] = dict(out="ac_msb_alg.csv", cols="f, s21_db, f, s11_db",
                                        gives=["cross-check (legacy .ac algebra): msb_gain, bw_msb, s11_msb, s11_edge"])
     meta["decks"]["s22_alg"] = dict(out="s22_alg.csv", cols="f, s22_db", gives=["cross-check (legacy .ac algebra): s22, s22_edge_ghz"])
-    meta["decks"]["balance_alg"] = dict(out="balance_alg.csv", cols="as balance.csv",
+    meta["decks"]["balance_alg"] = dict(out="balance_alg.csv", cols="as balance.csv (no acd col)",
                                         gives=["cross-check (legacy .ac node voltages): pn_gain_imb_db, pn_phase_imb_deg, cm_leak_dbc"])
+    # CM-drive twin of balance_alg: the ONE sign flip Vs<drv>n AC -0.5 -> +0.5
+    # turns the differential stimulus into a common-mode one; the CM->DM
+    # conversion gain is then A_cd = dB(2*(Vp - Vn)) (same 0.5 V EMF per side
+    # through 50 ohm as the DM deck). Independent cross-check of the primary
+    # deck's acd_db = dB|Sdc21| mixed-mode column.
+    bal_alg = dl.tb_ac_balance("pam4", ref, drive="msb", dp=dp, pts_per_dec=100,
+                               method="algebra", out_csv="cmdm_alg.csv")
+    flip = "Vsmsbn"
+    assert bal_alg.count(" AC -0.5") == 1
+    cmdm = bal_alg.replace(" AC -0.5", " AC 0.5")
+    cmdm = cmdm.replace("let ddb = db(v(outp)-v(outn))",
+                        "let ddb = db(mag(v(outp)-v(outn))+1e-15)")
+    open(os.path.join(d, "cmdm_alg.spice"), "w").write(cmdm)
+    meta["decks"]["cmdm_alg"] = dict(out="cmdm_alg.csv", cols="as balance_alg.csv; A_cd = ddb + 6.02 dB",
+                                     gives=["cross-check (CM drive, .ac node voltages): cm_dm_db"])
 
 
 def main() -> None:
     random.seed(7)                                   # == report/build_report.py
     msb = [random.randint(0, 1) for _ in range(NSYM)]
     lsb = [random.randint(0, 1) for _ in range(NSYM)]
-    for tier in "abcd":
+    for tier in "abcdf":
         t = TIERS[tier]
         dp = dp_of(t)
         d = os.path.join(DECKS, tier)
@@ -113,8 +129,8 @@ def main() -> None:
         # p/n balance (MSB drive)
         deck = dl.tb_ac_balance("pam4", ref, drive="msb", dp=dp, pts_per_dec=100, out_csv="balance.csv")
         open(os.path.join(d, "balance.spice"), "w").write(deck)
-        meta["decks"]["balance"] = dict(out="balance.csv", cols="f, gp_db, f, gn_db, f, php_deg, f, phn_deg, f, cm_db, f, dd_db",
-                                        gives=["pn_gain_imb_db", "pn_phase_imb_deg", "cm_leak_dbc"])
+        meta["decks"]["balance"] = dict(out="balance.csv", cols="f, gp_db, f, gn_db, f, php_deg, f, phn_deg, f, cm_db, f, dd_db, f, acd_db",
+                                        gives=["pn_gain_imb_db", "pn_phase_imb_deg", "cm_leak_dbc", "cm_dm_db"])
         # DC transfer (swing)
         deck = dl.tb_dc("pam4", ref, drive="both", vd_max_mv=900.0, step_mv=15.0, dp=dp, out_csv="dc.csv")
         open(os.path.join(d, "dc.spice"), "w").write(deck)
@@ -129,6 +145,18 @@ def main() -> None:
         open(os.path.join(d, "eye.spice"), "w").write(deck)
         meta["decks"]["eye"] = dict(out="eye.csv", cols="t, vout_diff", data_start_ns=t0, t_end_ns=t_end,
                                     gives=["eye_rlm", "eye_min_v", "eye_vpp", "eye_levels_v", "eye_openings_v"])
+        if tier == "f":
+            # full-swing eye of the record (paper eye figure): 900 mVpp input,
+            # 10 000 seed-7 symbols. ~10x the runtime of eye.spice.
+            random.seed(7)
+            msbf = [random.randint(0, 1) for _ in range(10000)]
+            lsbf = [random.randint(0, 1) for _ in range(10000)]
+            deck, t0f, t_endf = dl.tb_eye(ref, msb_bits=msbf, lsb_bits=lsbf, dp=dp,
+                                          baud_hz=BAUD, vswing_mv=900.0, out_csv="eye_fs.csv")
+            open(os.path.join(d, "eye_fs.spice"), "w").write(deck)
+            meta["decks"]["eye_fs"] = dict(out="eye_fs.csv", cols="t, vout_diff", data_start_ns=t0f,
+                                           t_end_ns=t_endf, nsym=10000, vswing_mv=900.0,
+                                           gives=["eye_fs_min_v", "eye_fs_min_width_ps", "eye_fs_rlm"])
         # independent-method twins: the legacy in-deck .ac power-wave algebra
         # (the primary decks use ngspice's built-in `sp` S-parameter analysis)
         write_alg_twins(d, ref, dp, meta)

@@ -42,7 +42,7 @@ import extract  # noqa: E402
 DECKS = os.path.join(HERE, "decks")
 EXPECTED = json.load(open(os.path.join(HERE, "expected.json")))
 TOL = EXPECTED["tol"]
-ORDER = ["ac_lsb", "ac_msb", "s22", "balance", "dc", "bias", "ac_msb_alg", "s22_alg", "balance_alg", "eye"]
+ORDER = ["ac_lsb", "ac_msb", "s22", "balance", "dc", "bias", "ac_msb_alg", "s22_alg", "balance_alg", "cmdm_alg", "eye"]
 
 RESULTS: list[tuple[str, str, str, object, object, bool]] = []   # tier, key, unit, got, exp, ok
 
@@ -82,8 +82,9 @@ def step_sim(tier: str, no_eye: bool) -> None:
         if not os.environ.get(env):
             raise SystemExit(f"{env} not set (the decks' .spiceinit resolves the IHP models through $PDK_ROOT/$PDK)")
     os.environ.setdefault("PDK", "ihp-sg13g2")
-    for name in ORDER:
-        if name == "eye" and no_eye:
+    order = ORDER + (["eye_fs"] if os.path.exists(os.path.join(d, "eye_fs.spice")) else [])
+    for name in order:
+        if name.startswith("eye") and no_eye:
             continue
         t0 = time.time()
         ok = run_ngspice(d, name + ".spice", timeout=3600)
@@ -91,8 +92,8 @@ def step_sim(tier: str, no_eye: bool) -> None:
     got = extract.extract(tier, d, verbose=False)
     exp = EXPECTED["tiers"][tier]
     for key in ("lsb_gain", "msb_gain", "weight", "bw_lsb", "bw_msb", "bw", "s11_lsb", "s11_msb", "s11", "s11_edge_ghz",
-                "s22", "s22_edge_ghz", "pn_gain_imb_db", "pn_phase_imb_deg", "cm_leak_dbc", "swing", "power",
-                "ic_ma_per_finger", "eye_rlm", "eye_min_v", "eye_vpp"):
+                "s22", "s22_edge_ghz", "pn_gain_imb_db", "pn_phase_imb_deg", "cm_leak_dbc", "cm_dm_db", "swing", "power",
+                "ic_ma_per_finger", "eye_rlm", "eye_min_v", "eye_vpp", "eye_fs_min_v", "eye_fs_min_width_ps", "eye_fs_rlm"):
         if key in got and key in exp:
             check(tier, key, got[key], exp[key], TOL.get(key, TOL["default"]), EXPECTED["units"].get(key, ""))
     # independent method (legacy .ac algebra) must agree with the primary `sp` decks
@@ -101,7 +102,10 @@ def step_sim(tier: str, no_eye: bool) -> None:
                                ("alg_s22", "s22", 0.01, "dB"), ("alg_s22_edge_ghz", "s22_edge_ghz", 0.05, "GHz"),
                                ("alg_pn_gain_imb_db", "pn_gain_imb_db", 0.002, "dB"),
                                ("alg_pn_phase_imb_deg", "pn_phase_imb_deg", 0.02, "deg"),
-                               ("alg_cm_leak_dbc", "cm_leak_dbc", 0.5, "dBc")):
+                               ("alg_cm_leak_dbc", "cm_leak_dbc", 0.5, "dBc"),
+                               ("alg_cm_dm_db", "cm_dm_db", 0.5, "dB")):
+        if b_ in ("cm_leak_dbc", "cm_dm_db") and got.get(b_, 0) < -150:
+            continue          # ideal-symmetry noise floor: both methods read < -150, exact value is numerical
         if a_ in got and b_ in got and (b_ != "s11_edge_ghz" or got["s11_msb"] >= got.get("s11_lsb", -1e9)):
             check(tier, f"{a_} == {b_}", got[a_], got[b_], tol_, unit + "  (legacy .ac algebra vs ngspice sp)")
     if "eye_openings_v" in got and "eye_openings_v" in exp:
@@ -170,7 +174,7 @@ def step_regen(tier: str) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--tier", default="a,b,c,d")
+    ap.add_argument("--tier", default="a,b,c,d,f")
     ap.add_argument("--step", default="sim,layout,regen", help="comma list of sim,layout,regen")
     ap.add_argument("--no-eye", action="store_true")
     a = ap.parse_args()

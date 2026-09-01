@@ -1,9 +1,9 @@
-# Logfile created on 2026-08-18 20:33:07 -0400 by logger.rb/61378
-2026-08-18 20:33:07 -0400: Memory Usage (413312K) : Starting running IHP-SG13G2 Klayout DRC maximum runset on /home/noorizad/spicexplorer-workspace/external/agentic-design-pam4-driver-ihp130/report/work/e/dut_pam4.gds
-2026-08-18 20:33:07 -0400: Memory Usage (413312K) : Ruby Version for klayout: 2.5.9
-2026-08-18 20:33:07 -0400: Memory Usage (413312K) : Loading database to memory is complete.
-2026-08-18 20:33:07 -0400: Memory Usage (413312K) : IHP-SG13G2 Klayout DRC maximum runset output at: /home/noorizad/spicexplorer-workspace/external/agentic-design-pam4-driver-ihp130/report/work/e/signoff/drc/dut_pam4_pam4drv_pam4_lay_sg13g2_maximal.lyrdb
-2026-08-18 20:33:07 -0400: Memory Usage (413312K) : Evaluate switches.
-2026-08-18 20:33:07 -0400: Memory Usage (413312K) : Klayout will use 128 thread(s)
-2026-08-18 20:33:07 -0400: Memory Usage (413312K) : deep mode is enabled for sg13g2_maximal runset.
-2026-08-18 20:33:26 -0400: Memory Usage (437296K) : KLayout DRC run for maximum ruleSet completed in 19.61 seconds
+# Logfile created on 2026-09-01 00:03:52 -0400 by logger.rb/61378
+2026-09-01 00:03:52 -0400: Memory Usage (413436K) : Starting running IHP-SG13G2 Klayout DRC maximum runset on /home/noorizad/spicexplorer-workspace/external/pam4-wt/paper-record/report/work/e/dut_pam4.gds
+2026-09-01 00:03:52 -0400: Memory Usage (413436K) : Ruby Version for klayout: 2.5.9
+2026-09-01 00:03:52 -0400: Memory Usage (413436K) : Loading database to memory is complete.
+2026-09-01 00:03:52 -0400: Memory Usage (413436K) : IHP-SG13G2 Klayout DRC maximum runset output at: /home/noorizad/spicexplorer-workspace/external/pam4-wt/paper-record/report/work/e/signoff/drc/dut_pam4_pam4drv_pam4_lay_sg13g2_maximal.lyrdb
+2026-09-01 00:03:52 -0400: Memory Usage (413436K) : Evaluate switches.
+2026-09-01 00:03:52 -0400: Memory Usage (413436K) : Klayout will use 128 thread(s)
+2026-09-01 00:03:52 -0400: Memory Usage (413436K) : deep mode is enabled for sg13g2_maximal runset.
+2026-09-01 00:04:00 -0400: Memory Usage (444792K) : KLayout DRC run for maximum ruleSet completed in 7.68 seconds

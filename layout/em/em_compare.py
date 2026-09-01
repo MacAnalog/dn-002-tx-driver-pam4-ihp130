@@ -98,6 +98,23 @@ def splice_subckt(em_sub: str, out_path: str) -> str:
             node_of[p["num"]] = f'{p["net"]}_trc'
         elif p["role"] == "rc_vcc_tap":
             node_of[p["num"]] = f'vcc_trc{len([q for q in ports if q["num"] < p["num"] and q["role"] == "rc_vcc_tap"])}'
+    def sim_card(t):
+        """LVS device card -> simulation X-card on the PDK subckt models
+        (npn13G2 / rsil / cap_cmim are .subckt, not .model, in SG13G2 —
+        same target forms as pex_sim.convert_pex_netlist)."""
+        low = " ".join(t).lower()
+        kv = {k.lower(): v for k, v in
+              (x.split("=", 1) for x in t if "=" in x)}
+        if t[0].startswith("Q") and "npn13g2" in low:
+            nx = int(float(kv.get("m", 1)))
+            return f"X{t[0][1:]} {' '.join(t[1:5])} npn13G2 Nx={nx}"
+        if t[0].startswith("R") and "rsil" in low:
+            return (f"X{t[0][1:]} {t[1]} {t[2]} sub rsil "
+                    f"w={kv['w']} l={kv['l']} m={kv.get('m', '1')}")
+        if t[0].startswith("C") and "cap_cmim" in low:
+            return f"X{t[0][1:]} {t[1]} {t[2]} cap_cmim w={kv['w']} l={kv['l']}"
+        return None
+
     out = []
     rc_seen = 0
     for line in lvs:
@@ -108,7 +125,7 @@ def splice_subckt(em_sub: str, out_path: str) -> str:
             net = "outp" if t[0][2] == "3" else "outn"
             assert t[1] == net, line
             t[1] = f"{net}_t{cell}"
-            out.append(" ".join(t))
+            out.append(sim_card(t))
         elif t and t[0].startswith("RR") and ("outp" in t[1:3] or "outn" in t[1:3]) and "vcc" in t[1:3]:
             # collector load resistor between out net and vcc rail
             net = t[1] if t[1] in ("outp", "outn") else t[2]
@@ -116,7 +133,9 @@ def splice_subckt(em_sub: str, out_path: str) -> str:
             t[i] = f"{net}_trc"
             t[j] = f"vcc_trc{rc_seen}"
             rc_seen += 1
-            out.append(" ".join(t))
+            out.append(sim_card(t))
+        elif t and sim_card(t):
+            out.append(sim_card(t))
         else:
             out.append(line)
     assert rc_seen == 2, f"expected 2 R_C devices, spliced {rc_seen}"

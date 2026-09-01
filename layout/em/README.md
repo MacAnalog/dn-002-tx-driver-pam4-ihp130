@@ -19,12 +19,29 @@ record); `target/` carries its GDS + LVS/kpex netlists as built by
 
 ## Pipeline
 
+The lane is the *demonstration of the platform integration*: every reusable
+step (net cut, via bars, ground scheme, workflow driving, vector fit) lives
+in the SpiceXplorer platform's `spicexplorer_layout.em` module — the scripts
+here are thin CLIs over it, plus the block-specific pieces (port map,
+splice, benches). Install the package into both envs (repo `.venv` and the
+openEMS env):
+
+    pip install \
+      "spicexplorer-core   @ git+https://github.com/MacAnalog/spicexplorer-platform#subdirectory=packages/spicexplorer-core" \
+      "spicexplorer-layout @ git+https://github.com/MacAnalog/spicexplorer-platform#subdirectory=packages/spicexplorer-layout"
+
+The SG13G2 process description (layer maps, via stack, SUBGND/contact
+layers, workflow location) is the packaged tech config
+`EmTech.builtin("ihp-sg13g2")`; solver hyperparameters are `EmSim`
+(committed here as `target/em_sim.yaml`).
+
+
 | step | script | what |
 |---|---|---|
-| 1 | `extract_nets.py` | metal-only net tracing (KLayout `LayoutToNetlist`, labels name the nets); writes the selected nets' polygons to `em_outnet.gds` on native SG13G2 layer numbers + port rectangles (GDS 300+n) + the ground scheme: ONE common SUBGND plane (GDS 210) under the whole cut and Activ+Cont columns tying the `sub` guard ring's Metal1 down to it |
+| 1 | `extract_nets.py` → `em.extract_net_gds` | metal-only net tracing (KLayout `LayoutToNetlist`, labels name the nets); selected nets' polygons on native SG13G2 layers, **via arrays merged into mesh-robust solid bars** (min side 0.55 µm — PDK cuts are smaller than the mesh cell and a column with no interior grid line does not conduct), port rectangles (GDS 300+n), and the ground scheme: ONE common SUBGND plane + Activ+Cont columns tying the `sub` guard ring's Metal1 down to it |
 | 2 | `gen_ports.py` | computes the 13-port map below from the net geometry; writes `ports.yaml` |
-| 3 | `run_em.py` (via `./run_em.sh`) | openEMS FDTD through the PDK workflow (`$PDK_ROOT/ihp-sg13g2/libs.tech/openems/`), one excitation per port → `em_outnet.s13p`; every solver hyperparameter loads from `--config target/em_sim.yaml` (committed = the run is reproducible) |
-| 4 | `em_to_subckt.py` | touchstone → passivity-enforced vector fit → ngspice subckt, with an explicit **DC anchor** (see below) |
+| 3 | `run_em.py` → `em.em_sparams` (via `./run_em.sh`) | openEMS FDTD through the PDK workflow (`$PDK_ROOT/ihp-sg13g2/libs.tech/openems/`), one excitation per port → `em_outnet.s13p`; every solver hyperparameter loads from `--config target/em_sim.yaml` (committed = the run is reproducible), printed with provenance (cli/config/DEFAULT) |
+| 4 | `em_to_subckt.py` → `em.em_to_subckt` | touchstone → passivity-enforced vector fit → ngspice subckt, with an explicit **DC anchor** (see below; `--dc-from-data` = Re(Y) at the lowest kept frequency) |
 | 5 | `em_compare.py` | the checks: `--step lowfreq` (wiring C, EM vs kpex), `--step splice` + `--step op` (bias currents, spliced vs kpex), `--step s22` (band-edge S22, spliced vs kpex — the apples-to-apples number) |
 
 ## The EM cut and its ports

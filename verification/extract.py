@@ -81,7 +81,8 @@ def eye_metrics(t, v, t0_ns, baud):
     levels, eyes = _levels_at(phase, vv, T, centre)
     amps = np.diff(levels)
     return dict(eye_levels_v=levels, eye_openings_v=eyes, eye_min_v=float(min(eyes)),
-                eye_vpp=float(vv.max() - vv.min()), eye_rlm=float(3 * amps.min() / amps.sum()))
+                eye_vpp=float(vv.max() - vv.min()), eye_rlm=float(3 * amps.min() / amps.sum()),
+                centre_s=centre)
 
 
 # ---------------------------------------------------------------- extraction
@@ -139,6 +140,9 @@ def extract(tier: str, deck_dir: str | None = None, verbose: bool = True) -> dic
         say(f"   pn_gain_imb  = max |dB(Vp)-dB(Vn)|, f<=48 GHz     = {out['pn_gain_imb_db']:8.3f} dB   (Vp,Vn from S31-S32, S41-S42)")
         say(f"   pn_phase_imb = max |(ph(Vp)-ph(Vn)) mod 360 - 180| = {out['pn_phase_imb_deg']:8.3f} deg")
         say(f"   cm_leak      = max dB|Vp+Vn| - dB|Vp-Vn|, <=48 GHz = {out['cm_leak_dbc']:8.2f} dBc")
+        if a.shape[1] > 13:                       # sp deck's mixed-mode CM->DM column
+            out["cm_dm_db"] = band_max(f, a[:, 13], 50.0)
+            say(f"   cm_dm        = max dB|Sdc21| (CM in, DM out), <=50 GHz = {out['cm_dm_db']:8.2f} dB")
     a = load(d, "dc.csv")
     if a is None:
         say("   dc.csv: not run")
@@ -180,6 +184,38 @@ def extract(tier: str, deck_dir: str | None = None, verbose: bool = True) -> dic
         out["alg_cm_leak_dbc"] = band_max(f, cm - dd, BAL_BAND_GHZ)
         say(f"   [alg] balance (legacy .ac node voltages)               = {out['alg_pn_gain_imb_db']:.3f} dB / "
             f"{out['alg_pn_phase_imb_deg']:.3f} deg / {out['alg_cm_leak_dbc']:.2f} dBc")
+    a = load(d, "cmdm_alg.csv")
+    if a is not None:
+        f, dd = a[:, 0] / 1e9, a[:, 11]
+        # CM drive with 0.5 V EMF per side: A_cd = dB(2*(Vp - Vn)) = ddb + 6.02
+        out["alg_cm_dm_db"] = band_max(f, dd + 20 * np.log10(2.0), 50.0)
+        say(f"   [alg] cm_dm (CM drive, .ac node voltages), <=50 GHz    = {out['alg_cm_dm_db']:8.2f} dB")
+    a = load(d, "eye_fs.csv")
+    if a is not None:
+        import json as _json
+        meta = _json.load(open(os.path.join(d, "meta.json")))
+        m0 = meta["decks"]["eye_fs"]
+        em = eye_metrics(a[:, 0], a[:, 1], m0["data_start_ns"], meta["baud_hz"])
+        t, v = a[:, 0], a[:, 1]
+        T = 1.0 / meta["baud_hz"]
+        t_an0 = m0["data_start_ns"] * 1e-9
+        win = t >= t_an0 + 2 * T
+        tg, vg = t[win], v[win]
+        dtp = float(np.median(np.diff(tg)))
+        ph = (tg - t_an0 - em["centre_s"] + T / 2) % T
+        widths = []
+        for i in range(3):
+            thr = (em["eye_levels_v"][i] + em["eye_levels_v"][i + 1]) / 2
+            sg = np.sign(vg - thr)
+            idx = np.nonzero(sg[:-1] * sg[1:] < 0)[0]
+            frac = (thr - vg[idx]) / (vg[idx + 1] - vg[idx])
+            pc = (ph[idx] + frac * dtp) % T
+            widths.append(float(pc[pc > T / 2].min() - pc[pc < T / 2].max()))
+        out["eye_fs_min_v"] = em["eye_min_v"]
+        out["eye_fs_rlm"] = em["eye_rlm"]
+        out["eye_fs_min_width_ps"] = min(widths) * 1e12
+        say(f"   eye_fs       = full-swing eye: min opening {em['eye_min_v']*1e3:.0f} mV, "
+            f"min width {min(widths)*1e12:.2f} ps, RLM {em['eye_rlm']:.4f}")
     a = load(d, "eye.csv")
     if a is None:
         say("   eye.csv: not run")

@@ -41,7 +41,9 @@ let php = ph(vp)*180/pi
 let phn = ph(vn)*180/pi
 let cmdb = db(mag(vp+vn)+1e-15)
 let ddb = db(vp-vn)
-wrdata balance.csv gpdb gndb php phn cmdb ddb
+let sdc = 0.5*(S_3_1 + S_3_2 - S_4_1 - S_4_2)
+let acddb = db(mag(sdc)+1e-15)
+wrdata balance.csv gpdb gndb php phn cmdb ddb acddb
 .endc
 .GLOBAL GND
 .end

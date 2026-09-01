@@ -1,6 +1,6 @@
 {
  "tier": "d",
- "label": "(d) co-design accepted point v3 (Alg. 1 through SpiceXplorer)",
+ "label": "(d) co-design round 2, v3 (Alg. 1 through SpiceXplorer)",
  "vcc": 4.0,
  "cell": {
   "nx": 3,
@@ -51,11 +51,12 @@
   },
   "balance": {
    "out": "balance.csv",
-   "cols": "f, gp_db, f, gn_db, f, php_deg, f, phn_deg, f, cm_db, f, dd_db",
+   "cols": "f, gp_db, f, gn_db, f, php_deg, f, phn_deg, f, cm_db, f, dd_db, f, acd_db",
    "gives": [
     "pn_gain_imb_db",
     "pn_phase_imb_deg",
-    "cm_leak_dbc"
+    "cm_leak_dbc",
+    "cm_dm_db"
    ]
   },
   "dc": {
@@ -104,9 +105,16 @@
   },
   "balance_alg": {
    "out": "balance_alg.csv",
-   "cols": "as balance.csv",
+   "cols": "as balance.csv (no acd col)",
    "gives": [
     "cross-check (legacy .ac node voltages): pn_gain_imb_db, pn_phase_imb_deg, cm_leak_dbc"
+   ]
+  },
+  "cmdm_alg": {
+   "out": "cmdm_alg.csv",
+   "cols": "as balance_alg.csv; A_cd = ddb + 6.02 dB",
+   "gives": [
+    "cross-check (CM drive, .ac node voltages): cm_dm_db"
    ]
   }
  }

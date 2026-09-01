@@ -1,17 +1,9 @@
-# Logfile created on 2026-08-18 11:31:46 -0400 by logger.rb/61378
-2026-08-18 11:31:46 -0400: Memory Usage (413376K) : Starting running IHP-SG13G2 Klayout DRC maximum runset on /home/noorizad/spicexplorer-workspace/external/agentic-design-pam4-driver-ihp130/report/work/c/dut_pam4.gds
-2026-08-18 11:31:46 -0400: Memory Usage (413376K) : Ruby Version for klayout: 2.5.9
-2026-08-18 11:31:46 -0400: Memory Usage (413376K) : Loading database to memory is complete.
-2026-08-18 11:31:46 -0400: Memory Usage (413376K) : IHP-SG13G2 Klayout DRC maximum runset output at: /home/noorizad/spicexplorer-workspace/external/agentic-design-pam4-driver-ihp130/report/work/c/signoff/drc/dut_pam4_pam4drv_pam4_lay_sg13g2_maximal.lyrdb
-2026-08-18 11:31:46 -0400: Memory Usage (413376K) : Evaluate switches.
-2026-08-18 11:31:46 -0400: Memory Usage (413376K) : Klayout will use 128 thread(s)
-2026-08-18 11:31:46 -0400: Memory Usage (413376K) : deep mode is enabled for sg13g2_maximal runset.
-2026-08-18 11:32:06 -0400: Memory Usage (441616K) : KLayout DRC run for maximum ruleSet completed in 19.92 seconds
-2026-08-18 20:31:14 -0400: Memory Usage (413304K) : Starting running IHP-SG13G2 Klayout DRC maximum runset on /home/noorizad/spicexplorer-workspace/external/agentic-design-pam4-driver-ihp130/report/work/c/dut_pam4.gds
-2026-08-18 20:31:14 -0400: Memory Usage (413304K) : Ruby Version for klayout: 2.5.9
-2026-08-18 20:31:14 -0400: Memory Usage (413304K) : Loading database to memory is complete.
-2026-08-18 20:31:14 -0400: Memory Usage (413304K) : IHP-SG13G2 Klayout DRC maximum runset output at: /home/noorizad/spicexplorer-workspace/external/agentic-design-pam4-driver-ihp130/report/work/c/signoff/drc/dut_pam4_pam4drv_pam4_lay_sg13g2_maximal.lyrdb
-2026-08-18 20:31:14 -0400: Memory Usage (413304K) : Evaluate switches.
-2026-08-18 20:31:14 -0400: Memory Usage (413304K) : Klayout will use 128 thread(s)
-2026-08-18 20:31:14 -0400: Memory Usage (413304K) : deep mode is enabled for sg13g2_maximal runset.
-2026-08-18 20:31:34 -0400: Memory Usage (437724K) : KLayout DRC run for maximum ruleSet completed in 20.35 seconds
+# Logfile created on 2026-09-01 00:03:03 -0400 by logger.rb/61378
+2026-09-01 00:03:03 -0400: Memory Usage (413088K) : Starting running IHP-SG13G2 Klayout DRC maximum runset on /home/noorizad/spicexplorer-workspace/external/pam4-wt/paper-record/report/work/c/dut_pam4.gds
+2026-09-01 00:03:03 -0400: Memory Usage (413088K) : Ruby Version for klayout: 2.5.9
+2026-09-01 00:03:03 -0400: Memory Usage (413088K) : Loading database to memory is complete.
+2026-09-01 00:03:03 -0400: Memory Usage (413088K) : IHP-SG13G2 Klayout DRC maximum runset output at: /home/noorizad/spicexplorer-workspace/external/pam4-wt/paper-record/report/work/c/signoff/drc/dut_pam4_pam4drv_pam4_lay_sg13g2_maximal.lyrdb
+2026-09-01 00:03:03 -0400: Memory Usage (413088K) : Evaluate switches.
+2026-09-01 00:03:03 -0400: Memory Usage (413088K) : Klayout will use 128 thread(s)
+2026-09-01 00:03:03 -0400: Memory Usage (413088K) : deep mode is enabled for sg13g2_maximal runset.
+2026-09-01 00:03:11 -0400: Memory Usage (444748K) : KLayout DRC run for maximum ruleSet completed in 7.68 seconds

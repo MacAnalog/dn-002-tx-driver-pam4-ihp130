@@ -101,7 +101,14 @@
   "tier": "a",
   "key": "cm_leak_dbc",
   "got": -291.62847582,
-  "expected": -291.44839208999997,
+  "expected": -291.62847582,
+  "ok": true
+ },
+ {
+  "tier": "a",
+  "key": "cm_dm_db",
+  "got": -282.680964,
+  "expected": -282.680964,
   "ok": true
  },
  {
@@ -208,6 +215,13 @@
   "got": -291.44839208999997,
   "expected": -291.62847582,
   "ok": true
+ },
+ {
+  "tier": "a",
+  "key": "alg_cm_dm_db == cm_dm_db",
+  "got": -280.01791008672035,
+  "expected": -282.680964,
+  "ok": false
  },
  {
   "tier": "a",
@@ -326,7 +340,14 @@
   "tier": "b",
   "key": "cm_leak_dbc",
   "got": -52.80937222538864,
-  "expected": -52.8093722212906,
+  "expected": -52.80937222538864,
+  "ok": true
+ },
+ {
+  "tier": "b",
+  "key": "cm_dm_db",
+  "got": -30.636748416334118,
+  "expected": -30.636748416334118,
   "ok": true
  },
  {
@@ -432,6 +453,13 @@
   "key": "alg_cm_leak_dbc == cm_leak_dbc",
   "got": -52.8093722212906,
   "expected": -52.80937222538864,
+  "ok": true
+ },
+ {
+  "tier": "b",
+  "key": "alg_cm_dm_db == cm_dm_db",
+  "got": -30.63674841346115,
+  "expected": -30.636748416334118,
   "ok": true
  },
  {
@@ -614,7 +642,14 @@
   "tier": "c",
   "key": "cm_leak_dbc",
   "got": -46.52480377252983,
-  "expected": -46.52480375830394,
+  "expected": -46.52480377252983,
+  "ok": true
+ },
+ {
+  "tier": "c",
+  "key": "cm_dm_db",
+  "got": -50.64402050424933,
+  "expected": -50.64402050424933,
   "ok": true
  },
  {
@@ -720,6 +755,13 @@
   "key": "alg_cm_leak_dbc == cm_leak_dbc",
   "got": -46.52480375830394,
   "expected": -46.52480377252983,
+  "ok": true
+ },
+ {
+  "tier": "c",
+  "key": "alg_cm_dm_db == cm_dm_db",
+  "got": -50.64402049096971,
+  "expected": -50.64402050424933,
   "ok": true
  },
  {
@@ -902,7 +944,14 @@
   "tier": "d",
   "key": "cm_leak_dbc",
   "got": -39.45375342659628,
-  "expected": -39.453753417596275,
+  "expected": -39.45375342659628,
+  "ok": true
+ },
+ {
+  "tier": "d",
+  "key": "cm_dm_db",
+  "got": -62.770097775410825,
+  "expected": -62.770097775410825,
   "ok": true
  },
  {
@@ -1008,6 +1057,13 @@
   "key": "alg_cm_leak_dbc == cm_leak_dbc",
   "got": -39.453753417596275,
   "expected": -39.45375342659628,
+  "ok": true
+ },
+ {
+  "tier": "d",
+  "key": "alg_cm_dm_db == cm_dm_db",
+  "got": -62.77009776213119,
+  "expected": -62.770097775410825,
   "ok": true
  },
  {

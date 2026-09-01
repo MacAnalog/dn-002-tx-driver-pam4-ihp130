@@ -47,6 +47,7 @@ def main() -> None:
     ap.add_argument("--preview", action="store_true", help="geometry/mesh preview only, no solve")
     ap.add_argument("--ports", default="", help="comma list: excite only these port numbers (default all)")
     cfg_path = ap.parse_known_args()[0].config
+    cfg = {}
     if cfg_path:
         cfg = yaml.safe_load(open(cfg_path)) or {}
         unknown = set(cfg) - {a_.dest for a_ in ap._actions}
@@ -56,6 +57,18 @@ def main() -> None:
             cfg["ports"] = ",".join(str(x) for x in cfg["ports"])
         ap.set_defaults(**cfg)
     a = ap.parse_args()
+
+    # loud config resolution: every solver knob with its value and where it
+    # came from (cli beats config beats default) — no silent defaults
+    solver_keys = ("stackup", "fstart", "fstop", "numfreq", "cellsize",
+                   "margin", "energy_limit", "boundary", "ports")
+    print(f"solver setup ({cfg_path or 'no --config'}):")
+    for k in solver_keys:
+        flag = "--" + k.replace("_", "-")
+        src = ("cli" if any(arg == flag or arg.startswith(flag + "=")
+                            for arg in sys.argv[1:])
+               else "config" if k in cfg else "DEFAULT")
+        print(f"  {k:13} = {getattr(a, k)!r:60}  [{src}]")
 
     sys.path.insert(0, WORKFLOW)
     sys.path.insert(0, os.path.join(WORKFLOW, "modules"))

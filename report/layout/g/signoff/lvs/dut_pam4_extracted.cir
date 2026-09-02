@@ -1,6 +1,6 @@
-* Extracted by KLayout with SG13G2 LVS runset on : 02/09/2026 14:07
+* Extracted by KLayout with SG13G2 LVS runset on : 02/09/2026 19:06
 
-.SUBCKT pam4drv_pam4_lay sub msbp msbn lsbp vcmb lsbn tlsb0 tmsb0 tmsb1 vcasc
+.SUBCKT pam4drv_pam4_lay sub msbn msbp lsbp vcmb lsbn tmsb0 tmsb1 tlsb0 vcasc
 + outp outn vcc
 Q$1 outn vcasc \$54 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
 + AC=19.283334p PC=19.31u NE=3 m=3

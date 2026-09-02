@@ -1151,20 +1151,24 @@ FINAL_LAYOUT = dict(nx=3, rc_ohm=51.77, rb_ohm=48.32, re_ohm=3.09,
                     in_bus_layer="Metal4", drop_layer="Metal2")
 FINAL_BIASES = {"vcc": 4.0, "vcasc": 3.3427, "vcmb": 1.9, "tail_ma": 13.9958}
 
-# r4 = the point ACCEPTED at the end of co-design round 4 (codesign/results/r4/
-# summary.json, island s10 trial 29 = the round's best-score trial). Round 4
-# kept the r3 objective but made the reviewer margins feasibility hinges
-# (swing >= 2.2 Vpp, gain >= 8.3/2.3 dB, BW >= 55 GHz, + a 2/dB MSB-gain
-# reward) after the 36-corner PVT sweep showed the record sitting on the swing
-# and gain walls, and added two review-driven generator options (vcc_trim,
-# rb_off; codesign/README.md "Round 4"). vs the record at the report
-# instrument (kpex CC halo 8, exact band edges; codesign/runs/rm_r4_h8):
-#   S11 -10.157 -> -10.243 (edge 32.7 -> 33.1 GHz)   S22 -10.280 -> -10.246
-#   gain 2.380/8.358 -> 2.393/8.370   BW 61.1 -> 61.5   swing 2.106 -> 2.205 Vpp
+# r4 = the point ACCEPTED at the end of co-design round 4: island s10 trial 29
+# (codesign/results/r4/summary.json, the round's best-score trial) with TWO
+# input-side knobs reverted to the record's values by the post-round review
+# (rb_off -9.23 -> 0, in_bus_lvl 3 -> 4; codesign/runs/rm_r4_rb0_lvl4). The
+# search had flipped them for 0.07 dB of S11 at the cost of 22 dB of CM->diff
+# conversion, a metric J does not score (-72.8 dB record, -47.6 dB as searched,
+# -69.4 dB reverted; codesign/README.md "Round 4"). Round 4 kept the r3
+# objective but made the reviewer margins feasibility hinges (swing >= 2.2
+# Vpp, gain >= 8.3/2.3 dB, BW >= 55 GHz, + a 2/dB MSB-gain reward) after the
+# 36-corner PVT sweep showed the record sitting on the swing and gain walls,
+# and added two review-driven generator options (vcc_trim, rb_off). vs the
+# record at the report instrument (kpex CC halo 8, exact band edges):
+#   S11 -10.157 -> -10.175 (edge 32.7 -> 32.8 GHz)   S22 -10.280 -> -10.247
+#   gain 2.380/8.358 -> 2.393/8.370   BW 61.1 -> 61.3   swing 2.106 -> 2.205 Vpp
 #   power 167.2 -> 175.0 mW   area 7268 -> 7166 um2
-#   balance 0.017 dB / 0.25 deg / -52.3 dBc -> 0.016 / 0.26 / -52.2 (halo 8;
-#   at the halo-20 search instrument 0.027/0.45/-47.4 -> 0.019/0.31/-50.6 —
-#   the vcc_trim gain sits in the outn<->vcc coupling that halo 8 drops)
+#   balance 0.017 dB / 0.25 deg / -52.3 dBc -> 0.017 / 0.25 / -52.5 (halo 8;
+#   the vcc_trim gain sits in the outn<->vcc coupling that halo 8 drops — at
+#   the halo-20 search instrument phase 0.45 -> 0.31 deg, diff->CM -47.4 -> -50.5)
 # FINAL_LAYOUT (the paper's round-3 column) is deliberately NOT moved: which
 # point is the layout of record is the owner's call.
 R4_LAYOUT = dict(nx=3, rc_ohm=52.08, rb_ohm=48.01, re_ohm=3.24,
@@ -1174,7 +1178,7 @@ R4_LAYOUT = dict(nx=3, rc_ohm=52.08, rb_ohm=48.01, re_ohm=3.24,
                  rc_gap=2.82, in_off=2.16, in_bus_gap=3.12, sub_off=1.3,
                  stack_w=1.43, c_strip=2, bus_trim=1, out_split=1,
                  sub_bus=1, in_order=0, cell_order=1, vcc_trim=1,
-                 rb_off=-9.23, in_bus_lvl=3, input_feed="center", in_bus_layer="Metal4",
+                 rb_off=0.0, in_bus_lvl=4, input_feed="center", in_bus_layer="Metal4",
                  drop_layer="Metal2")
 R4_BIASES = {"vcc": 4.0, "vcasc": 3.3601, "vcmb": 1.9, "tail_ma": 14.6546}
 

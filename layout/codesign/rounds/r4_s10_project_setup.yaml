@@ -11,7 +11,10 @@
 #   theta_L (layout):     resistor widths + every floorplan spacing below
 #   theta_S (structural): the INT floorplan options (c_strip ... cell_order)
 #
-# ROUND 4 (this file). `init` = the layout of record (gen_layout.FINAL_LAYOUT +
+# ROUND 4b, islands s10-s12: `init` = the record with the tail bumped to 14.7 mA (swing hinge)
+# and the two review options ON (vcc_trim 1, rb_off -9.25, in_bus_lvl 3) — the r2 lesson:
+# structural knobs are seeded on in their own island. Otherwise identical to project_setup.yaml.
+# ROUND 4 base file text follows. `init` there = the layout of record (gen_layout.FINAL_LAYOUT +
 # FINAL_BIASES = r3_s12/run_26, the round-3 best-score point the TCAS paper
 # presents), so trial 1 of every island must reproduce its scorecard at the
 # search instrument (kpex CC halo 20, exact band edges; results/r3/summary.json
@@ -56,7 +59,7 @@ project:
   parallel_sim: false
   sim_engine: layout
 
-  ws_root: .
+  ws_root: ..
   netlist: flow.yaml         # the DUT "netlist" is the layout-flow spec
   outdir: temp_spice_out     # <outdir>/layout/<testbench>/run_<n>_<label>/{pam4drv_pam4_lay.gds, drc/, lvs/, pex/, measure.log, summary.json}
 
@@ -79,7 +82,7 @@ project:
   # ------------------------------------------------------------------
   dut_params:
     - { name: nx,        min_val: 2,    max_val: 4,    init: 3,     is_integer: true, description: "npn13G2 emitter fingers per device" }
-    - { name: tail_ma,   min_val: 10.0, max_val: 17.5, init: 13.9958, description: "tail current per gain cell (mA)" }
+    - { name: tail_ma,   min_val: 10.0, max_val: 17.5, init: 14.7, description: "tail current per gain cell (mA)" }
     - { name: rc_ohm,    min_val: 40.0, max_val: 70.0, init: 51.77, description: "collector load per side (ohm, on-chip back-termination)" }
     - { name: rb_ohm,    min_val: 40.0, max_val: 60.0, init: 48.32, description: "input termination per side (ohm)" }
     - { name: re_ohm,    min_val: 2.8,  max_val: 6.0,  init: 3.09,  description: "emitter degeneration per side (ohm)" }
@@ -117,9 +120,9 @@ project:
     - { name: sub_bus,    min_val: 0, max_val: 1, init: 1, is_integer: true, description: "0 = Metal3 substrate bus | 1 = taps tie to the ring on Metal1 (no bus under the output risers)" }
     - { name: cell_order, min_val: 0, max_val: 1, init: 1, is_integer: true, description: "0 = M0|L0|M1 | 1 = M0|M1|L0 (shorter MSB input bus)" }
     # --- r4b: the review-driven options (sx-scratch/pam4-codesign-r4/review_run26.md) ---
-    - { name: vcc_trim,   min_val: 0, max_val: 1, init: 0, is_integer: true, description: "1 = TopMetal2 vcc rail trimmed to the RC stacks + feed stub (kills the 64 um coplanar outn<->vcc run: 1.30 vs 0.18 fF, the phase-imbalance / diff->CM owner)" }
-    - { name: rb_off,     min_val: -9.5, max_val: 3.0, init: 0.0, description: "slide of the centre-fed R_B block (um): -9.75 equalises the msbp/msbn M4 bus extents (45.4 vs 32.7 um, the gain-imbalance owner)" }
-    - { name: in_bus_lvl, min_val: 3, max_val: 5, init: 4, is_integer: true, description: "input-bus metal 3/4/5 (existing generator field never searched in r3; 4 = the record's Metal4)" }
+    - { name: vcc_trim,   min_val: 0, max_val: 1, init: 1, is_integer: true, description: "1 = TopMetal2 vcc rail trimmed to the RC stacks + feed stub (kills the 64 um coplanar outn<->vcc run: 1.30 vs 0.18 fF, the phase-imbalance / diff->CM owner)" }
+    - { name: rb_off,     min_val: -9.5, max_val: 3.0, init: -9.25, description: "slide of the centre-fed R_B block (um): -9.75 equalises the msbp/msbn M4 bus extents (45.4 vs 32.7 um, the gain-imbalance owner)" }
+    - { name: in_bus_lvl, min_val: 3, max_val: 5, init: 3, is_integer: true, description: "input-bus metal 3/4/5 (existing generator field never searched in r3; 4 = the record's Metal4)" }
 
   testbenches:
     - name: layout

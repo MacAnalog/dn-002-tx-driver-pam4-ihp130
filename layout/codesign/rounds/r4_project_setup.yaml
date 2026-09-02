@@ -116,10 +116,6 @@ project:
     - { name: out_split,  min_val: 0, max_val: 3, init: 1, is_integer: true, description: "output-bus metal: 0 both TM1 | 1 outn on TM2 (v3) | 2 BOTH on TM2 (symmetric, r3) | 3 outp on TM2 (mirrored, r3)" }
     - { name: sub_bus,    min_val: 0, max_val: 1, init: 1, is_integer: true, description: "0 = Metal3 substrate bus | 1 = taps tie to the ring on Metal1 (no bus under the output risers)" }
     - { name: cell_order, min_val: 0, max_val: 1, init: 1, is_integer: true, description: "0 = M0|L0|M1 | 1 = M0|M1|L0 (shorter MSB input bus)" }
-    # --- r4b: the review-driven options (sx-scratch/pam4-codesign-r4/review_run26.md) ---
-    - { name: vcc_trim,   min_val: 0, max_val: 1, init: 0, is_integer: true, description: "1 = TopMetal2 vcc rail trimmed to the RC stacks + feed stub (kills the 64 um coplanar outn<->vcc run: 1.30 vs 0.18 fF, the phase-imbalance / diff->CM owner)" }
-    - { name: rb_off,     min_val: -9.5, max_val: 3.0, init: 0.0, description: "slide of the centre-fed R_B block (um): -9.75 equalises the msbp/msbn M4 bus extents (45.4 vs 32.7 um, the gain-imbalance owner)" }
-    - { name: in_bus_lvl, min_val: 3, max_val: 5, init: 4, is_integer: true, description: "input-bus metal 3/4/5 (existing generator field never searched in r3; 4 = the record's Metal4)" }
 
   testbenches:
     - name: layout

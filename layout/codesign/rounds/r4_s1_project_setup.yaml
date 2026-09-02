@@ -11,7 +11,10 @@
 #   theta_L (layout):     resistor widths + every floorplan spacing below
 #   theta_S (structural): the INT floorplan options (c_strip ... cell_order)
 #
-# ROUND 4 (this file). `init` = the layout of record (gen_layout.FINAL_LAYOUT +
+# ROUND 4, island s1: `init` = the v4 ACCEPTANCE point (r3_s23/run_30: swing 2.237,
+# S22 -10.81, 185 mW) — feasible on swing from trial 1. Otherwise identical to
+# project_setup.yaml (round 4).
+# ROUND 4 base file text follows. `init` there = the layout of record (gen_layout.FINAL_LAYOUT +
 # FINAL_BIASES = r3_s12/run_26, the round-3 best-score point the TCAS paper
 # presents), so trial 1 of every island must reproduce its scorecard at the
 # search instrument (kpex CC halo 20, exact band edges; results/r3/summary.json
@@ -56,7 +59,7 @@ project:
   parallel_sim: false
   sim_engine: layout
 
-  ws_root: .
+  ws_root: ..
   netlist: flow.yaml         # the DUT "netlist" is the layout-flow spec
   outdir: temp_spice_out     # <outdir>/layout/<testbench>/run_<n>_<label>/{pam4drv_pam4_lay.gds, drc/, lvs/, pex/, measure.log, summary.json}
 
@@ -79,34 +82,34 @@ project:
   # ------------------------------------------------------------------
   dut_params:
     - { name: nx,        min_val: 2,    max_val: 4,    init: 3,     is_integer: true, description: "npn13G2 emitter fingers per device" }
-    - { name: tail_ma,   min_val: 10.0, max_val: 17.5, init: 13.9958, description: "tail current per gain cell (mA)" }
-    - { name: rc_ohm,    min_val: 40.0, max_val: 70.0, init: 51.77, description: "collector load per side (ohm, on-chip back-termination)" }
-    - { name: rb_ohm,    min_val: 40.0, max_val: 60.0, init: 48.32, description: "input termination per side (ohm)" }
-    - { name: re_ohm,    min_val: 2.8,  max_val: 6.0,  init: 3.09,  description: "emitter degeneration per side (ohm)" }
-    - { name: cdeg_ff,   min_val: 12.0, max_val: 32.0, init: 16.84, description: "emitter bridging cap (fF, HF peaking)" }
-    - { name: vcasc,     min_val: 3.0,  max_val: 3.4,  init: 3.3427,  description: "cascode base bias (V)" }
+    - { name: tail_ma,   min_val: 10.0, max_val: 17.5, init: 15.4977, description: "tail current per gain cell (mA)" }
+    - { name: rc_ohm,    min_val: 40.0, max_val: 70.0, init: 47.86, description: "collector load per side (ohm, on-chip back-termination)" }
+    - { name: rb_ohm,    min_val: 40.0, max_val: 60.0, init: 51.03, description: "input termination per side (ohm)" }
+    - { name: re_ohm,    min_val: 2.8,  max_val: 6.0,  init: 3.54,  description: "emitter degeneration per side (ohm)" }
+    - { name: cdeg_ff,   min_val: 12.0, max_val: 32.0, init: 20.95, description: "emitter bridging cap (fF, HF peaking)" }
+    - { name: vcasc,     min_val: 3.0,  max_val: 3.4,  init: 3.2151,  description: "cascode base bias (V)" }
     # ------------------------------------------------------------------
     # theta_L — layout knobs (um). Resistor lengths always re-derive from the
     # rsil model (R = 7*l/w + 9/w) so every candidate holds its resistance —
     # widths trade area/EM against parasitics. Bounds are the DRC-safe ranges
     # of the generator (TM1 min width 1.64, TM2 2.0, TopVia2 pad 1.9, ...).
     # ------------------------------------------------------------------
-    - { name: re_w,      min_val: 4.5,  max_val: 10.0, init: 5.66, description: "RE rsil width (16 mA/cell path)" }
-    - { name: rc_w,      min_val: 1.0,  max_val: 3.0,  init: 1.51, description: "RC rsil width (24 mA path)" }
-    - { name: rb_w,      min_val: 0.5,  max_val: 1.5,  init: 0.68, description: "RB rsil width" }
-    - { name: gap_x,     min_val: 5.5,  max_val: 9.0,  init: 5.65,  description: "inner gap of a differential pair (Cdeg lives here)" }
-    - { name: row_gap,   min_val: 1.2,  max_val: 3.0,  init: 1.91, description: "input row -> cascode row" }
-    - { name: cell_gap,  min_val: 4.0,  max_val: 9.0,  init: 4.21, description: "gap between gain cells (row length)" }
-    - { name: out_gap,   min_val: 3.0,  max_val: 20.0, init: 3.18, description: "outp <-> outn bus edge gap (differential sidewall C; >= TM2 space 2.0)" }
-    - { name: out_w,     min_val: 1.64, max_val: 3.0,  init: 1.97, description: "output bus width (TM1 min 1.64; clamped to 2.0 on TM2)" }
-    - { name: w_out,     min_val: 1.5,  max_val: 3.0,  init: 1.68, description: "output Metal2 riser width" }
-    - { name: out_off,   min_val: 1.2,  max_val: 5.0,  init: 2.06,  description: "sub bus -> outp bus" }
-    - { name: rc_sep,    min_val: 4.0,  max_val: 8.0,  init: 4.48, description: "RCp <-> RCn column separation" }
-    - { name: rc_gap,    min_val: 2.0,  max_val: 8.0,  init: 2.87,  description: "outn bus -> RC body; ALSO outn bus -> TopMetal2 vcc rail (r3: outn<->vcc is 2.33 fF vs outp's 0.25 fF)" }
-    - { name: in_off,    min_val: 1.0,  max_val: 4.0,  init: 2.18, description: "tail bus -> first input bus" }
-    - { name: in_bus_gap, min_val: 1.0, max_val: 4.0,  init: 3.26, description: "input bus pair gap (Metal4)" }
-    - { name: sub_off,   min_val: 1.0,  max_val: 3.0,  init: 1.33, description: "cascode row -> substrate bus" }
-    - { name: stack_w,   min_val: 1.1,  max_val: 2.5,  init: 1.47, description: "via-stack pad size (per-via clamped)" }
+    - { name: re_w,      min_val: 4.5,  max_val: 10.0, init: 6.13, description: "RE rsil width (16 mA/cell path)" }
+    - { name: rc_w,      min_val: 1.0,  max_val: 3.0,  init: 1.13, description: "RC rsil width (24 mA path)" }
+    - { name: rb_w,      min_val: 0.5,  max_val: 1.5,  init: 0.55, description: "RB rsil width" }
+    - { name: gap_x,     min_val: 5.5,  max_val: 9.0,  init: 6.48,  description: "inner gap of a differential pair (Cdeg lives here)" }
+    - { name: row_gap,   min_val: 1.2,  max_val: 3.0,  init: 1.25, description: "input row -> cascode row" }
+    - { name: cell_gap,  min_val: 4.0,  max_val: 9.0,  init: 5.2, description: "gap between gain cells (row length)" }
+    - { name: out_gap,   min_val: 3.0,  max_val: 20.0, init: 4.81, description: "outp <-> outn bus edge gap (differential sidewall C; >= TM2 space 2.0)" }
+    - { name: out_w,     min_val: 1.64, max_val: 3.0,  init: 1.84, description: "output bus width (TM1 min 1.64; clamped to 2.0 on TM2)" }
+    - { name: w_out,     min_val: 1.5,  max_val: 3.0,  init: 1.75, description: "output Metal2 riser width" }
+    - { name: out_off,   min_val: 1.2,  max_val: 5.0,  init: 1.76,  description: "sub bus -> outp bus" }
+    - { name: rc_sep,    min_val: 4.0,  max_val: 8.0,  init: 6.32, description: "RCp <-> RCn column separation" }
+    - { name: rc_gap,    min_val: 2.0,  max_val: 8.0,  init: 2.48,  description: "outn bus -> RC body; ALSO outn bus -> TopMetal2 vcc rail (r3: outn<->vcc is 2.33 fF vs outp's 0.25 fF)" }
+    - { name: in_off,    min_val: 1.0,  max_val: 4.0,  init: 1.32, description: "tail bus -> first input bus" }
+    - { name: in_bus_gap, min_val: 1.0, max_val: 4.0,  init: 2.87, description: "input bus pair gap (Metal4)" }
+    - { name: sub_off,   min_val: 1.0,  max_val: 3.0,  init: 1.49, description: "cascode row -> substrate bus" }
+    - { name: stack_w,   min_val: 1.1,  max_val: 2.5,  init: 1.11, description: "via-stack pad size (per-via clamped)" }
     # ------------------------------------------------------------------
     # theta_S — structural options (gen_layout.py). INT knobs so the search,
     # not the author, picks the floorplan variant. init = the v3 point.
@@ -116,10 +119,6 @@ project:
     - { name: out_split,  min_val: 0, max_val: 3, init: 1, is_integer: true, description: "output-bus metal: 0 both TM1 | 1 outn on TM2 (v3) | 2 BOTH on TM2 (symmetric, r3) | 3 outp on TM2 (mirrored, r3)" }
     - { name: sub_bus,    min_val: 0, max_val: 1, init: 1, is_integer: true, description: "0 = Metal3 substrate bus | 1 = taps tie to the ring on Metal1 (no bus under the output risers)" }
     - { name: cell_order, min_val: 0, max_val: 1, init: 1, is_integer: true, description: "0 = M0|L0|M1 | 1 = M0|M1|L0 (shorter MSB input bus)" }
-    # --- r4b: the review-driven options (sx-scratch/pam4-codesign-r4/review_run26.md) ---
-    - { name: vcc_trim,   min_val: 0, max_val: 1, init: 0, is_integer: true, description: "1 = TopMetal2 vcc rail trimmed to the RC stacks + feed stub (kills the 64 um coplanar outn<->vcc run: 1.30 vs 0.18 fF, the phase-imbalance / diff->CM owner)" }
-    - { name: rb_off,     min_val: -9.5, max_val: 3.0, init: 0.0, description: "slide of the centre-fed R_B block (um): -9.75 equalises the msbp/msbn M4 bus extents (45.4 vs 32.7 um, the gain-imbalance owner)" }
-    - { name: in_bus_lvl, min_val: 3, max_val: 5, init: 4, is_integer: true, description: "input-bus metal 3/4/5 (existing generator field never searched in r3; 4 = the record's Metal4)" }
 
   testbenches:
     - name: layout

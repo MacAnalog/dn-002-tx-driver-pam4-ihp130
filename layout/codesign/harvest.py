@@ -45,8 +45,15 @@ SPECS_R3 = {
     "drc_pass": ("eq", 1, 1, 100, False), "lvs_match": ("eq", 1, 1, 100, False),
     "pex_ok": ("eq", 1, 1, 100, False),
 }
-SPEC_TABLES = {"r2": SPECS_R2, "r3": SPECS_R3}
-SPECS = SPECS_R3
+# r4: the r3 J with reviewer margins as hinges (swing 2.2, msb_gain 8.3, lsb_gain 2.3,
+# bw 55) and a small msb_gain reward (2/dB) — see project_setup.yaml (round 4).
+SPECS_R4 = dict(SPECS_R3)
+SPECS_R4.update({
+    "msb_gain": ("max", 8.3, 1.0, 2, True), "lsb_gain": ("max", 2.3, 1.0, 5, False),
+    "bw": ("max", 55.0, 10.0, 5, False), "swing": ("max", 2.2, 0.2, 5, False),
+})
+SPEC_TABLES = {"r2": SPECS_R2, "r3": SPECS_R3, "r4": SPECS_R4}
+SPECS = SPECS_R4
 MAX_PENALTY = 1e6
 
 

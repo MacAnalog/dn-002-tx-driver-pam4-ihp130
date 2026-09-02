@@ -16,7 +16,8 @@ from __future__ import annotations
 import argparse, glob, json, os, subprocess, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PLATFORM = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", "spicexplorer-platform"))
+PLATFORM = os.environ.get("SPX_PLATFORM") or os.path.abspath(
+    os.path.join(HERE, "..", "..", "..", "..", "spicexplorer-platform"))
 
 
 def main() -> None:

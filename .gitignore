@@ -47,4 +47,5 @@ verification/work/
 # EM lane scratch: FDTD run data + cut GDS are regenerable (layout/em/README.md);
 # only the port map, netlists, manifest, touchstone and fitted subckt are results
 layout/em/target/em_out/sub-*
+layout/em/target_r4/em_out/sub-*
 layout/em/target/*.gds

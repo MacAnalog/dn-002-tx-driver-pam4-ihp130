@@ -25,7 +25,7 @@ import sys
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TGT = os.path.join(HERE, "target")
+TGT = os.environ.get("PAM4_EM_TARGET") or os.path.join(HERE, "target")   # r4: target_r4/
 sys.path.insert(0, os.path.join(HERE, "..", "..", "testbenches"))
 sys.path.insert(0, os.path.join(HERE, ".."))
 

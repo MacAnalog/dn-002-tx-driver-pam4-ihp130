@@ -1,0 +1,36 @@
+# EM vs kpex comparison — co-design round-4 point (r4_s10/run_29), 2026-09-02
+
+Same lane, ports, solver setup (em_sim.yaml, cellsize 0.5 um, 241 pts DC-60 GHz) and
+rungs as the record's target/results.txt. Fit: 2 real + 12 complex poles, DC anchor from
+the data, scikit-rf passivity enforcement SKIPPED (unbounded on this 13-port model) and a
+NEAR-passive fit accepted at worst sampled singular value 1.001165 (--sv-tol 3e-3; the
+touchstone itself is passive to 1.00008). Rung 3 is the check that this is harmless.
+
+## rung 2: wiring C (extractor-level, same geometry)
+EM wiring C at 1.0 GHz (same-net ports tied, ref = sub):
+  C(outp - sub )     8.62 fF
+  C(outp - outn)     3.77 fF
+  C(outp - vcc )     0.08 fF
+  C(outn - sub )     9.57 fF
+  C(outn - vcc )     0.61 fF
+  C( vcc - sub )     2.65 fF
+kpex wiring C (all nets of the cut):
+  C( outn - vsubs)    11.89 fF
+  C( outp - vsubs)    11.06 fF
+  C(  vcc - vsubs)     3.86 fF
+  C( outn - outp )     1.70 fF
+  C( \$51 - outp )     0.75 fF
+  C( \$49 - outp )     0.73 fF
+  C( \$53 - outp )     0.73 fF
+  C( \$50 - outn )     0.67 fF
+  C( \$52 - outn )     0.67 fF
+  C( \$54 - outn )     0.67 fF
+  C( outp - vcasc)     0.23 fF
+
+## rung 3: DC operating point (spliced vs kpex deck — the DC-anchor gate)
+       kpex: Icc 43.753 mA  power 175.0 mW
+ EM-spliced: Icc 43.922 mA  power 175.7 mW
+
+## rung 4: band-edge reflection (the claim under test)
+       kpex: S22 -10.246 dB (worst <= 50 GHz), -10 dB holds to 51.56 GHz
+ EM-spliced: S22 -10.575 dB (worst <= 50 GHz), -10 dB holds to 53.91 GHz

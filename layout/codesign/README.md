@@ -301,10 +301,14 @@ post-layout PVT + mismatch on the extracted netlist.
   swing failures 4.5 % → **0 %** (min 2.196 Vpp), S11 failures 26 % → 15.5 %;
   S22 4.5 → 9 % (the point sits 0.03 dB closer to −10 at halo 8), gains and
   balance rates within noise of the record's.
-* **EM** — output-network cut (S22) through `layout/em/` on `target_r4/`;
-  see `layout/em/README.md` "Round-4 point". The input-side (S11) cut stays
-  blocked on the mesh (three of four input stubs open at DC at
-  `cellsize 0.5`; the falsification run is `lsbp` alone at 0.2 µm).
+* **EM** — output-network cut (S22) through `layout/em/` on `target_r4/`
+  (`layout/em/README.md` "Round-4 point", `target_r4/results.txt`): full-wave
+  S22 **−10.58 dB, −10 dB edge 53.9 GHz** against kpex's −10.25 / 51.6, bias
+  point within 0.4 % — the same margin the record's EM rung showed (−10.63).
+  The EM rung also measures the rail trim kpex-at-halo-8 cannot see:
+  C(outn, vcc) 1.73 → 0.61 fF. The input-side (S11) cut stays blocked on the
+  mesh (three of four input stubs open at DC at `cellsize 0.5`; the
+  falsification run is `lsbp` alone at 0.2 µm).
 
 **Next (costed).** A corner-aware round: the hook runs the benches at the two
 binding corners (`ss/125 °C`, `ss/−40 °C`) on top of nominal (+2 bench sets ≈

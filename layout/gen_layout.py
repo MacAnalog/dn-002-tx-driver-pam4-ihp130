@@ -1169,8 +1169,8 @@ FINAL_BIASES = {"vcc": 4.0, "vcasc": 3.3427, "vcmb": 1.9, "tail_ma": 13.9958}
 #   balance 0.017 dB / 0.25 deg / -52.3 dBc -> 0.017 / 0.25 / -52.5 (halo 8;
 #   the vcc_trim gain sits in the outn<->vcc coupling that halo 8 drops — at
 #   the halo-20 search instrument phase 0.45 -> 0.31 deg, diff->CM -47.4 -> -50.5)
-# FINAL_LAYOUT (the paper's round-3 column) is deliberately NOT moved: which
-# point is the layout of record is the owner's call.
+# FINAL_LAYOUT (the paper's round-3 column) is deliberately NOT moved: owner
+# ruling 2026-09-02 — the paper keeps the record; R4 is reviewer-response evidence.
 R4_LAYOUT = dict(nx=3, rc_ohm=52.08, rb_ohm=48.01, re_ohm=3.24,
                  cdeg_ff=17.24, re_w=5.56, rc_w=1.52, rb_w=0.64,
                  gap_x=5.66, row_gap=1.96, cell_gap=4.12, out_gap=3.05,

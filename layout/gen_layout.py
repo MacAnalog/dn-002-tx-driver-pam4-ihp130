@@ -191,6 +191,25 @@ class LayoutParams:
                             # round-3 knob — outn<->vcc was the biggest p/n
                             # asymmetry of v3, 2.33 fF against outp's 0.25)
     vcc_w: float = 5.0      # vcc rail (TopMetal2)
+    # --- co-design round-4 options (rf-layout-reviewer on r3_s12/run_26,
+    # 2026-09-02, sx-scratch/pam4-codesign-r4/review_run26.md). Both default
+    # to the record's geometry so run_26 rebuilds byte-identical at 0:
+    #  - vcc_trim: 1 = the TopMetal2 vcc rail spans only the two RC stacks
+    #    (+ a perpendicular feed stub) instead of the full output-bus extent.
+    #    The r3 record draws the rail over x_bus_l..x_bus_r even when
+    #    bus_trim=1 trims the buses, so the outn TM2 bus runs coplanar with
+    #    it for 64 um at 10.6 um: C(outn,vcc) 1.30 fF against outp's 0.18 —
+    #    1.12 fF of the 0.98 fF outp/outn asymmetry, i.e. the phase-imbalance
+    #    and diff->CM owner (2*pi*f*R*dC: 0.43 deg modelled vs 0.455 read).
+    #    The README's "riser/pad stack mirror" hypothesis is worth 0.22 fF.
+    #  - rb_off (um): slides the centre-fed R_B block along x. With
+    #    cell_order=1 the MSB cells are not symmetric about x=0 while every
+    #    cell drops p left / n right, so msbn's R_B falls inside its drop span
+    #    and msbp's 12.7 um outside it: M4 bus 45.4 vs 32.7 um (64 aF/um ->
+    #    0.58 of the 0.63 fF msbp/msbn asymmetry, the gain-imbalance owner).
+    #    rb_off ~ -9.75 zeroes it; the guard keeps columns off the drop stacks.
+    vcc_trim: int = 0
+    rb_off: float = 0.0
     ring_margin: float = 3.0
     ring_w: float = 1.0
     stack_w: float = 2.0    # default via-stack pad size
@@ -546,6 +565,7 @@ def cap_bbox_half(cdeg_ff: float) -> float:
 
 def check_knob_interactions(p: LayoutParams, *, span: float, half: float,
                             Xs: list[float]) -> None:
+    n_cells = len(Xs)
     """Knob-space constraints that keep a candidate DRC-clean by construction.
 
     Found by the co-design round-1 skip analysis (2026-08-18); a violation
@@ -583,6 +603,24 @@ def check_knob_interactions(p: LayoutParams, *, span: float, half: float,
                     f"rc_sep {p.rc_sep}: RC column x={x_rc:.2f} within "
                     f"{pad + 1.7:.2f} um of a riser stack at x={xr:.2f} "
                     f"(TM1.b/Vn.b) — move rc_sep inside or outside the risers")
+    # r4 rb_off: every R_B column's 1.0 um bus stack must clear every base
+    # drop (a w_m1-wide Metal2 descent through the bus band at
+    # X +/- (dev_cx + x_off)): pad half + line half + M2/M4 space. The rsil
+    # body sits below the bus band, so it cannot meet a drop.
+    if p.input_feed == "center" and p.rb_off:
+        drop_hw = 0.35 if p.drop_layer == "Metal2" else p.w_m1 / 2
+        x_off = max(span / 2 + 0.5, p.re_w / 2 + 0.3 + drop_hw)
+        drops = [X + s * (dev_cx + x_off) for X in Xs for s in (-1, +1)]
+        n_in = 4 if n_cells == 3 else 2
+        cols = [-(n_in - 1) * p.rb_pitch / 2 + p.rb_off + i * p.rb_pitch
+                for i in range(n_in)]
+        need = 0.5 + p.w_m1 / 2 + 0.3
+        for xc in cols:
+            for xd in drops:
+                if abs(xc - xd) < need - 1e-9:
+                    raise ValueError(
+                        f"rb_off {p.rb_off}: R_B column x={xc:.2f} within "
+                        f"{need:.2f} um of a base-drop stack at x={xd:.2f}")
     # TM2.bR: the outn bus is the TopMetal2 one nearest the 5 um-wide vcc
     # rail (out_split 1 and 2); its edge-to-edge distance to the rail is
     # rc_gap + len(RC) + 0.4 - vcc_w/2.
@@ -705,7 +743,7 @@ def build_dut(dut: str, p: LayoutParams = LayoutParams()):
     # --- RB block + input buses (Metal3, optional M4 stitch + shield) ---
     n_in = len(spec["inputs"])
     if p.input_feed == "center":
-        x_rb0 = -(n_in - 1) * p.rb_pitch / 2       # H-tree: R_B on centreline
+        x_rb0 = -(n_in - 1) * p.rb_pitch / 2 + p.rb_off   # H-tree: R_B on centreline (+ r4 slide)
     else:
         x_rb0 = Xs[0] - cell_w / 2 - n_in * p.rb_pitch - 1.0
     rb_x = {}
@@ -794,9 +832,17 @@ def build_dut(dut: str, p: LayoutParams = LayoutParams()):
         stack(c, xr, y_rc_p2, "Metal1", "TopMetal2", p.stack_w)
         rec["res"].append((f"Rc{net[-1]}", net, "vcc", p.rc_w, dy_rc))
     # NOTE: schematic names Rcp/Rcn -> net outp/outn; record uses last char
-    # vcc rail
-    rect(c, "TopMetal2drawing", x_bus_l, y_vcc - p.vcc_w / 2,
-         x_bus_r, y_vcc + p.vcc_w / 2)
+    # vcc rail: full output-bus extent (record), or trimmed to the two RC
+    # stacks (r4 `vcc_trim`). The pad feed of a trimmed rail leaves the core
+    # perpendicular to it, AWAY from the output buses (they sit below the RC
+    # bodies), so it adds nothing to any scored coupling and is not drawn:
+    # drawing it only grew the core bbox (+292 um2 for a 3 um stub).
+    if p.vcc_trim:
+        h = max(p.rc_sep / 2 + 2.0 * p.stack_w, 6.0)
+        rect(c, "TopMetal2drawing", -h, y_vcc - p.vcc_w / 2, h, y_vcc + p.vcc_w / 2)
+    else:
+        rect(c, "TopMetal2drawing", x_bus_l, y_vcc - p.vcc_w / 2,
+             x_bus_r, y_vcc + p.vcc_w / 2)
     c.add_label(text="vcc", position=(0, y_vcc), layer="TopMetal2text")
 
     # --- substrate: tap columns in the cell gaps (Metal1 — the gaps are
@@ -1104,6 +1150,37 @@ FINAL_LAYOUT = dict(nx=3, rc_ohm=51.77, rb_ohm=48.32, re_ohm=3.09,
                     sub_bus=1, in_order=0, cell_order=1, input_feed="center",
                     in_bus_layer="Metal4", drop_layer="Metal2")
 FINAL_BIASES = {"vcc": 4.0, "vcasc": 3.3427, "vcmb": 1.9, "tail_ma": 13.9958}
+
+# r4 = the point ACCEPTED at the end of co-design round 4: island s10 trial 29
+# (codesign/results/r4/summary.json, the round's best-score trial) with TWO
+# input-side knobs reverted to the record's values by the post-round review
+# (rb_off -9.23 -> 0, in_bus_lvl 3 -> 4; codesign/runs/rm_r4_rb0_lvl4). The
+# search had flipped them for 0.07 dB of S11 at the cost of 22 dB of CM->diff
+# conversion, a metric J does not score (-72.8 dB record, -47.6 dB as searched,
+# -69.4 dB reverted; codesign/README.md "Round 4"). Round 4 kept the r3
+# objective but made the reviewer margins feasibility hinges (swing >= 2.2
+# Vpp, gain >= 8.3/2.3 dB, BW >= 55 GHz, + a 2/dB MSB-gain reward) after the
+# 36-corner PVT sweep showed the record sitting on the swing and gain walls,
+# and added two review-driven generator options (vcc_trim, rb_off). vs the
+# record at the report instrument (kpex CC halo 8, exact band edges):
+#   S11 -10.157 -> -10.175 (edge 32.7 -> 32.8 GHz)   S22 -10.280 -> -10.247
+#   gain 2.380/8.358 -> 2.393/8.370   BW 61.1 -> 61.3   swing 2.106 -> 2.205 Vpp
+#   power 167.2 -> 175.0 mW   area 7268 -> 7166 um2
+#   balance 0.017 dB / 0.25 deg / -52.3 dBc -> 0.017 / 0.25 / -52.5 (halo 8;
+#   the vcc_trim gain sits in the outn<->vcc coupling that halo 8 drops — at
+#   the halo-20 search instrument phase 0.45 -> 0.31 deg, diff->CM -47.4 -> -50.5)
+# FINAL_LAYOUT (the paper's round-3 column) is deliberately NOT moved: owner
+# ruling 2026-09-02 — the paper keeps the record; R4 is reviewer-response evidence.
+R4_LAYOUT = dict(nx=3, rc_ohm=52.08, rb_ohm=48.01, re_ohm=3.24,
+                 cdeg_ff=17.24, re_w=5.56, rc_w=1.52, rb_w=0.64,
+                 gap_x=5.66, row_gap=1.96, cell_gap=4.12, out_gap=3.05,
+                 out_w=1.94, w_out=1.61, out_off=1.88, rc_sep=4.55,
+                 rc_gap=2.82, in_off=2.16, in_bus_gap=3.12, sub_off=1.3,
+                 stack_w=1.43, c_strip=2, bus_trim=1, out_split=1,
+                 sub_bus=1, in_order=0, cell_order=1, vcc_trim=1,
+                 rb_off=0.0, in_bus_lvl=4, input_feed="center", in_bus_layer="Metal4",
+                 drop_layer="Metal2")
+R4_BIASES = {"vcc": 4.0, "vcasc": 3.3601, "vcmb": 1.9, "tail_ma": 14.6546}
 
 
 def main() -> None:

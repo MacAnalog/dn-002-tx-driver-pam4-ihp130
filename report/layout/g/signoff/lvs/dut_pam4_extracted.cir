@@ -1,0 +1,44 @@
+* Extracted by KLayout with SG13G2 LVS runset on : 02/09/2026 19:06
+
+.SUBCKT pam4drv_pam4_lay sub msbn msbp lsbp vcmb lsbn tmsb0 tmsb1 tlsb0 vcasc
++ outp outn vcc
+Q$1 outn vcasc \$54 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
++ AC=19.283334p PC=19.31u NE=3 m=3
+Q$4 outp vcasc \$53 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
++ AC=19.283334p PC=19.31u NE=3 m=3
+Q$7 outp vcasc \$51 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
++ AC=19.283334p PC=19.31u NE=3 m=3
+Q$10 outn vcasc \$52 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
++ AC=19.283334p PC=19.31u NE=3 m=3
+Q$13 outn vcasc \$50 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
++ AC=19.283334p PC=19.31u NE=3 m=3
+Q$16 \$54 lsbn \$15 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
++ AC=19.283334p PC=19.31u NE=3 m=3
+Q$19 outp vcasc \$49 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
++ AC=19.283334p PC=19.31u NE=3 m=3
+Q$22 \$50 msbn \$11 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
++ AC=19.283334p PC=19.31u NE=3 m=3
+Q$25 \$52 msbn \$13 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
++ AC=19.283334p PC=19.31u NE=3 m=3
+Q$28 \$49 msbp \$10 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
++ AC=19.283334p PC=19.31u NE=3 m=3
+Q$31 \$51 msbp \$12 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
++ AC=19.283334p PC=19.31u NE=3 m=3
+Q$34 \$53 lsbp \$14 sub npn13G2 AE=0.063p PE=1.94u AB=19.2965p PB=19.32u
++ AC=19.283334p PC=19.31u NE=3 m=3
+R$37 vcmb lsbp rsil w=0.64u l=3.1u ps=0 b=0 m=1
+R$38 vcmb lsbn rsil w=0.64u l=3.1u ps=0 b=0 m=1
+R$39 vcmb msbp rsil w=0.64u l=3.1u ps=0 b=0 m=1
+R$40 vcmb msbn rsil w=0.64u l=3.1u ps=0 b=0 m=1
+R$41 tmsb0 \$10 rsil w=5.56u l=1.29u ps=0 b=0 m=1
+R$42 tmsb0 \$11 rsil w=5.56u l=1.29u ps=0 b=0 m=1
+R$43 tmsb1 \$12 rsil w=5.56u l=1.29u ps=0 b=0 m=1
+R$44 tmsb1 \$13 rsil w=5.56u l=1.29u ps=0 b=0 m=1
+R$45 tlsb0 \$14 rsil w=5.56u l=1.29u ps=0 b=0 m=1
+R$46 tlsb0 \$15 rsil w=5.56u l=1.29u ps=0 b=0 m=1
+R$47 outp vcc rsil w=1.52u l=10.02u ps=0 b=0 m=1
+R$48 outn vcc rsil w=1.52u l=10.02u ps=0 b=0 m=1
+C$49 \$15 \$14 cap_cmim w=3.33u l=3.33u A=11.0889p P=13.32u m=1
+C$50 \$13 \$12 cap_cmim w=3.33u l=3.33u A=11.0889p P=13.32u m=1
+C$51 \$11 \$10 cap_cmim w=3.33u l=3.33u A=11.0889p P=13.32u m=1
+.ENDS pam4drv_pam4_lay

@@ -22,7 +22,7 @@ harvest.py           runs/<round>_s* -> results/<round>/{trials.jsonl, summary.j
                      (--accept ISLAND/RUN records the ACCEPTED trial next to the argmax-J one; they differ in r3)
 figures.py           annotated parameterized layout, before/after, per-round strip (drawn from the GDS)
 peek.py              one line per trial while a round runs
-rounds/              the project_setup.yaml of every past round (r1_..., r2_s3_... = multi-start island)
+rounds/              the project_setup.yaml of every past round (r1_..., r2_s3_..., r4_s*_... = multi-start islands)
 results/<round>/     the committed record R of each round (trials.jsonl, summary.json, best.gds/.png/_post.spice)
 results/baseline_r2_instrument.json   the layout of record measured with the r2 instrument (the honest baseline)
 *.png, *.pdf         pam4_layout_annotated / before_after (r3 pair) / before_after_r2 / rounds
@@ -100,6 +100,7 @@ baseline scorecard (parity), or the round is not started.
 | r1 | generator as-is; θ_E ∪ θ_L, 26 knobs; guards added mid-round after the first DRC skips | 3 × 40 | 64 / 6 (r1 instrument; 0 honest) / 56 | −10.04 / −10.76 (r1: dec-20 grid max, halo 8 — 0.55 dB of that is the halo cliff) | **fix G**: DRC guards + snapped vias + TopVia1 table; fix the instrument; add structural knobs |
 | r2 | + `c_strip`, `bus_trim`, `out_split`, `sub_bus`, `cell_order`; bounds re_ohm ≥ 2.8, cdeg ≥ 12, rc_sep ≤ 8, out_gap ≤ 20, stack_w ≥ 1.1; band-edge metrics + halo 20; islands s0/s1 OnePlusOne + s2 TwoPointsDE from the layout of record, s3 OnePlusOne from the review point (all five structural options on) | 4 × 40 | 150 / 15 / 10 (3 build, 7 DRC) — **all 15 feasible points are island s3**; s0–s2 (120 trials from the record) found none | −10.07 / −10.79 / gain 2.23 / 8.20 / BW 61.2 / swing 2.26 / 190.2 mW / 6880 µm² (band edges, halo 20; s3 `run_38`) | **accept** `run_38` as v3 (`gen_layout.FINAL_LAYOUT`); the record's `FINAL_LAYOUT` is kept as `V2_LAYOUT` |
 | r3 | balance made an **objective** (owner brief: better p/n balance first, then reflection, then power, then area): the hook measures the MSB *and* LSB path (`pn_*`, `cm_leak_dbc`, `*_lsb`), `J` rewards them (30/dB, 2/deg, 0.5/dB) plus power (0.15/mW) on top of a steeper S11 reward (5/dB); + 2 structural knobs from the r2 matching audit — `out_split` 2/3 (both buses on TM2 / mirrored) and `in_order` (p/n-swapped input rows) — + the continuous knob `rc_gap` (outn bus ↔ RC body **and** the TM2 vcc rail; the r2 extraction reads outn↔vcc 2.33 fF vs outp's 0.25 fF). 14 islands: s10–s15 from v3, s16/s17 with the new structural options on, s18/s19 with reflection-preserving hinges, s20–s23 with the **acceptance rule itself** as the hinge (S11 ≤ −10.065, S22 ≤ −10.785 = v3) | 14 × 30–40 = 520 | 488 / 141 / 32 (28 DRC, 4 generator refusals = 6.2 %) | −10.073 / −10.812 / bal 0.035 dB / 0.64° / −44.5 dBc / gain 2.27 / 8.24 / BW 61.4 / swing 2.24 / 185.0 mW / 7055 µm² (band edges, halo 20; s23 `run_30`) | **accept** `run_30` as v4 (`gen_layout.V4_LAYOUT`); v3 kept as `V3_LAYOUT`. The TCAS paper presents the round by its **best-score** point `s12 run_26` (J = 11.52, the round's max: −10.16 / −10.28 at halo 8, 167.2 mW, bal 0.02 dB / 0.24° / −52.7 dBc, 7268 µm²) — that point is `gen_layout.FINAL_LAYOUT`, the layout of record (report tier f) |
+| r4 | **reviewer margins as hinges** (swing ≥ 2.2 Vpp, gain ≥ 8.3/2.3 dB, BW ≥ 55 GHz) + a 2/dB MSB-gain reward on the unchanged r3 objective — the 36-corner PVT sweep on the record showed it sitting on the swing (2.106) and gain (8.36) walls; + 2 structural options from the extraction-driven review of `run_26`: `vcc_trim` (TopMetal2 vcc rail trimmed to the RC stacks — the record drew it over the full bus extent, 64 µm coplanar with the outn TM2 bus: C(outn,vcc) 1.30 vs C(outp,vcc) 0.18 fF, the phase-imbalance / diff→CM owner) and `rb_off` (slide of the centre-fed R_B block: equalises the msbp/msbn M4 bus extents, 45.4 vs 32.7 µm); + `in_bus_lvl` (an existing generator field never searched). 13 islands: s0–s7 without the options (from the record, the v4 point and the tail-bumped record), s10–s14 with them on | 13 × 40 = 520 | 453 / 87 / 67 (52 generator refusals — all the `rb_off` guard between −9.3 and −9.5 —, 15 DRC) | −10.277 / −10.278 / bal 0.019 dB / 0.31° / −50.6 dBc / gain 2.39 / 8.37 / BW 61.7 / swing 2.205 / 175.0 mW / 7166 µm² (band edges, halo 20; s10 `run_29`) | **accept** `run_29` **with `rb_off` and `in_bus_lvl` reverted to the record's values** (`gen_layout.R4_LAYOUT`; `runs/rm_r4_rb0_lvl4`): the post-round audit of the unscored CM→diff row found the search had bought 0.05 dB of S11 with 22 dB of it (−72.8 → −47.6 dB); the revert keeps every hinge and scored metric, gives back 0.07 dB of S11 and reads −69.4 dB. `FINAL_LAYOUT` (the paper's round-3 column) is not moved — **owner ruling 2026-09-02: the paper keeps the record as its highlight; round 4 is kept here as reviewer-response evidence** (margin point + PVT/MC/EM pack) |
 
 Round-2 reading: the structural options are what carry the design across the
 line — the three islands that started from the layout of record with the
@@ -166,6 +167,208 @@ gap knobs open. The round is therefore accepted on the **halo-20** numbers
 (the more complete extraction, and the search instrument since r2); the halo-8
 column of the scorecard below is the report instrument, not the acceptance
 criterion.
+
+## Round 4 — reviewer margins, and the review that found the vcc rail
+
+**Why.** The owner's brief for this round was a point that is *competitive when
+reviewers see it*, not a higher score. The reviewer-evidence sweep on the
+record (36 PVT corners + 400-sample mismatch MC, run with this very hook —
+`~/sx-scratch/pam4-driver-reviewer-evidence/`) showed the round-3 point sitting
+on two of its walls at nominal: swing 2.106 Vpp against a 2.1 spec and MSB gain
+8.36 against 8.2 dB. The round-3 power reward (0.15/mW) had driven the tail
+down until both bound.
+
+**What changed in Θ and J.** Same specs `S`, same reward terms, but the
+reviewer margins are feasibility hinges: swing ≥ 2.2 Vpp, MSB/LSB gain ≥ 8.3 /
+2.3 dB, BW ≥ 55 GHz; MSB gain also gets a small reward (2/dB — the silicon
+reference reads 9.2 dB, the one row of the paper's table where the record
+trails it). The record is infeasible on swing at trial 1 (score −2.36); `in_order`
+is dropped (measured null in r3). Scores of r4 are **not** comparable with r3.
+
+**What changed in G — the review.** `rf-layout-reviewer` on `r3_s12/run_26`
+(extraction-driven; the report is committed as `reviews/r4_review_run26.md`)
+overturned the README's own round-4 hypothesis. The "riser/pad via-stack
+mirror" is worth 0.22 fF; the 1.12 fF that makes outn heavier than outp is
+**C(outn, vcc) = 1.30 fF against outp's 0.18**, and its polygon is the
+TopMetal2 vcc rail: `build_dut` drew it over the full output-bus extent
+(`x_bus_l..x_bus_r`, 80 µm) even when `bus_trim=1` trims the buses, so the
+outn TM2 bus runs coplanar with it for 64 µm at 10.6 µm. A hand model with
+R_eff = R_C ‖ 50 Ω and the extracted ΔC_out = 0.98 fF gives 0.43° of phase
+imbalance and −47.9 dBc against the 0.455° / −47.4 read — phase and diff→CM
+are output-net metrics. On the input side, the centre-fed R_B block sits at
+x ≈ 0 while `cell_order=1` makes the MSB cells asymmetric about x = 0 and every
+cell drops p left / n right, so msbn's R_B falls inside its drop span and
+msbp's 12.7 µm outside it (M4 bus 45.4 vs 32.7 µm at 64 aF/µm). Two INT/float
+options, both defaulting to the record's geometry (the record rebuilds
+byte-identical at 0, md5 `e5222b91…`):
+
+| option | geometry | S11 | S22 | gain imb | phase imb | diff→CM | ctot outp/outn | ctot msbp/msbn |
+|---|---|---|---|---|---|---|---|---|
+| record | — | −10.195 | −10.258 | 0.0267 | 0.455° | −47.40 | 15.70 / 16.68 | 9.11 / 8.49 |
+| `vcc_trim` 1 | rail 80 → 12 µm | −10.195 | **−10.309** | 0.0206 | **0.311°** | **−50.54** | 15.62 / 16.24 | — |
+| `rb_off` −9.25 | R_B block slid left | **−10.248** | −10.257 | 0.0262 | 0.470° | −47.17 | — | 8.44 / 8.50 |
+| both | | **−10.248** | **−10.309** | **0.0201** | 0.326° | −50.22 | | |
+| `in_bus_lvl` 3 / 5 | input buses on Metal3 / Metal5 | −10.209 / −10.182 | = | = | = | = | | 9.07 / 8.34 ; 9.19 / 8.65 |
+
+(one-knob A/Bs at the record's electrical point, kpex CC halo 20, `runs/rm_ab_*`.)
+The vcc trim delivers what the model predicted — 3.1 dB of diff→CM, 0.14° of
+phase, and 0.05 dB of S22 *at the same time*, the one decoupled win the r3
+ceiling section said did not exist. The R_B slide equalises the input buses
+exactly (8.44 / 8.50 fF) and buys 0.05 dB of S11, but moves gain imbalance by
+0.0005 dB: the review's "input side owns the gain imbalance" was refuted by
+the measurement, as the r3 metal-symmetry hypothesis was. `rb_off` needed a
+guard (R_B columns vs the base-drop stacks); −11.5 passes the guard and fails
+DRC (M2.b/M3.b/M4.b), so the bound is −9.5..3. A first version of `vcc_trim`
+drew a 3 µm feed stub and grew the core bbox by 292 µm²; the feed leaves the
+core away from the output buses and couples to nothing scored, so it is not
+drawn.
+
+**Islands.** s0/s3/s7 from the record (OnePlusOne ×2, CMA), s1/s4 from the v4
+acceptance point (fails the gain hinge by 0.06 dB), s2/s5/s6 from the record
+with the tail bumped 13.996 → 14.7 mA (feasible on swing from trial 1,
+J 10.27); s10–s12 the same bumped record with both options on (trial 1:
+J 12.54), s13/s14 the 4a leader with both options on (trial 1: J 12.86).
+
+**Reading.** Without the generator change (s0–s7, 320 trials, 54 feasible)
+the search tops out at J 10.57 (`r4_s2 run_38`): the tail-bumped record with
+nothing else moved — the record-seeded and v4-seeded islands found ≤ 2
+feasible points each, because a OnePlusOne started 0.1 Vpp inside the swing
+hinge spends its budget climbing out. With the options on (s10–s14, 200
+trials, 33 feasible) the leader is `r4_s10 run_29`, J 13.05 — the trial-1
+option point plus 0.06 dB of S11 (rc 51.8 → 52.1, re 3.09 → 3.24) and 100 µm²
+of area. Skips: 52 generator refusals, **all** the `rb_off` guard (the search
+kept proposing −9.3…−9.5, where a column meets a drop — the legal band is
+narrow because four columns at 2.4 µm pitch have to thread six drop stacks),
+and 15 DRC fails (M1.b / M2.b). 12.9 % of the budget.
+
+**Instrument note (read this before quoting the balance).** At the block's
+report instrument (kpex CC halo 8) the vcc-trim gain is *invisible*: the
+outn↔vcc gap is 10.6 µm, beyond the 8 µm sidewall halo, so kpex drops that
+coupling for the record and the trimmed rail alike, and both read ≈ 0.016 dB /
+0.26° / −52 dBc. At halo 20 the record reads 0.027 / 0.455 / −47.4 and the
+round-4 point 0.019 / 0.31 / −50.6. The coupling is physical (the EM lane on
+the record already measured C(outn, vcc) at 1.73 fF, `layout/em/target/results.txt`
+rung 2); halo 8 flatters the record, not the fix.
+
+**The objective audit that changed the accepted point.** The report table
+carries one balance metric J never scored: CM→diff conversion at 50 GHz
+(`run_ac_balance`, Sdc21, the row the paper prints as −72.8 dB for the record).
+The search leader `run_29` reads **−47.6 dB** there — a 25 dB step in the wrong
+direction on a symmetry row. One-knob attribution on the record at halo 20
+(`runs/rm_ab_*`, same bench) names the owner: `rb_off` alone moves CM→diff
+−59.0 → −47.6 dB and `in_bus_lvl` 3 costs a further 5 dB, while `vcc_trim`
+leaves it at −58.9. The R_B slide equalises the input-bus *capacitances* but
+skews the base-side *impedance* the common-mode input sees, and CM→diff is
+exactly that skew — the 0.05 dB of S11 it bought was paid with 11 dB of a
+metric outside J. So the accepted point is `run_29` with both input-side knobs
+reverted to the record's values (`rb_off` 0, `in_bus_lvl` 4 = Metal4, the
+choice the v2 review made on physics; `runs/rm_r4_rb0_lvl4`, halo 8):
+
+| point (halo 8 CC) | S11 / edge | S22 | gains | swing | power | area | gain / phase imb | diff→CM | **CM→diff** |
+|---|---|---|---|---|---|---|---|---|---|
+| record (run_26) | −10.157 / 32.7 | −10.280 | 2.380 / 8.358 | 2.106 | 167.2 | 7268 | 0.017 / 0.25° | −52.3 | **−72.8** |
+| run_29 as searched (`rb_off` −9.23, lvl 3) | −10.243 / 33.1 | −10.246 | 2.393 / 8.370 | 2.205 | 175.0 | 7166 | 0.016 / 0.26° | −52.2 | −47.6 |
+| run_29, `rb_off` 0 | −10.192 / — | −10.247 | = | = | = | = | 0.017 / 0.25° | −52.6 | −60.2 |
+| run_29, lvl 4 | −10.230 / — | −10.246 | = | = | = | = | 0.016 / 0.26° | −52.2 | −44.8 |
+| **run_29, `rb_off` 0 + lvl 4 = `R4_LAYOUT`** | **−10.175 / 32.8** | **−10.247** | **=** | **=** | **=** | **=** | **0.017 / 0.25°** | **−52.5** | **−69.4** |
+
+Every hinge and every scored metric is unchanged by the revert (the two knobs
+touch only the input buses); the price is 0.07 dB of S11 (edge 33.1 → 32.8 GHz),
+and CM→diff returns to within 3.4 dB of the record on this bench (`report/build_report.py`,
+the paper's instrument, reads **−72.5 dB** for the same point against the record's −72.8 —
+same `run_ac_balance` call, its own kpex netlist of the same GDS; the row is a deep
+notch, so ±3 dB between two extractions of one layout is its resolution). The instrument is sharp
+here — the record itself reads −59 dB at halo 20 and −72.8 at halo 8 — so the
+column-to-column comparison is only meaningful at one halo (the table above
+and the paper's column are halo 8). This is the round's real lesson for
+Algorithm 1: a knob the review proposed on a capacitance argument was accepted
+by J on a 0.05 dB S11 delta, and only the unscored audit row caught what it
+cost; the next round should score CM→diff (or hinge it at the record's value).
+
+### Round-4 scorecard
+
+| metric | spec | record (r3_s12 run_26), halo 8 CC — the paper's column | **r4 = `R4_LAYOUT` (s10 run_29, review-reverted), halo 8 CC** | r4, halo 20 CC (search instrument) | run_29 as searched, halo 8 |
+|---|---|---|---|---|---|
+| S11 @32 GHz (dB) / −10 dB edge (GHz) | ≤ −10 / ≥ 32 | −10.157 / 32.71 | **−10.175 / 32.79** | −10.213 / 32.96 | −10.243 / 33.10 |
+| S22 @50 GHz (dB) / −10 dB edge (GHz) | ≤ −10 / ≥ 50 | −10.280 / 51.77 | **−10.247 / 51.56** | −10.278 / 51.76 | −10.246 / 51.56 |
+| gain LSB / MSB (dB) | ≥ 2.2 / ≥ 8.2 | 2.380 / 8.358 | **2.393 / 8.370** | 2.393 / 8.370 | 2.393 / 8.370 |
+| DAC weight (dB) | ≥ 5 | 5.979 | **5.977** | 5.977 | 5.977 |
+| BW MSB / LSB (GHz) | ≥ 50 | 61.1 / 81.4 | **61.3 / 81.5** | 61.5 / 81.8 | 61.5 / 81.2 |
+| swing (Vpp diff) | ≥ 2.1 | 2.106 | **2.205** | 2.205 | 2.205 |
+| power @4 V (mW) | ≤ 192 | 167.2 | **175.0** | 175.0 | 175.0 |
+| I_C per finger (mA) | < 3 | 2.33 | **2.44** | 2.44 | 2.44 |
+| core area (µm²) | — | 7268 | **7166** | 7166 | 7166 |
+| p/n gain imbalance ≤ 48 GHz (dB) | audit | 0.0167 | **0.0166** | 0.0198 | 0.0162 |
+| p/n phase imbalance ≤ 48 GHz (°) | audit | 0.254 | **0.247** | 0.297 | 0.260 |
+| diff→CM ≤ 48 GHz (dBc) | audit | −52.33 | **−52.53** | −50.94 | −52.19 |
+| CM→diff ≤ 50 GHz (dB) | audit | −72.8 | **−69.4** (report instrument, tier g: **−72.5**) | −59.3 (record −59.0) | −47.6 |
+| tail / vcasc / R_C / R_E | | 13.996 mA / 3.343 V / 51.77 / 3.09 | **14.655 mA / 3.360 V / 52.08 / 3.24** | | = |
+
+(`runs/rm_c_s12r26_h8`, `runs/rm_r4_rb0_lvl4`, `runs/rm_r4v_h20`, `runs/rm_r4_h8`;
+RC extraction reproduces CC to four decimals as in r2/r3.)
+What a reviewer sees against the round-3 column: +0.1 Vpp of swing margin
+(5 % above spec instead of 0.3 %), S11 and its edge held (−10.175 / 32.8 GHz),
+gains and bandwidth up, area down 1.4 %, balance equal at the report
+instrument and clearly better at the fuller one, CM→diff within 3.4 dB — for
++7.8 mW (175 mW is 9 % below the reference's 192 mW; the record's 167 mW was
+13 %) and 0.03 dB of S22.
+
+### Verification of the round-4 point
+
+Owner's rule for the final point: EM on every applicable spec, and
+post-layout PVT + mismatch on the extracted netlist.
+
+* **PVT, 36 corners** (3 process × VCC 3.8/4.0/4.2 V × −40/27/85/125 °C, the
+  same harness and instrument as the record's sweep; halo-8 extraction):
+  36/36 converged, 6 corners inside the box (record: 5); tables and the
+  six-panel figure in `results/r4/verification.md` / `fig_pvt_r4.png` (the
+  `run_29`-as-searched sweep is kept as a middle column there). Worst corners
+  are the same physics as the record's — `ss/3.8 V/125 °C` for S11 −8.74
+  (record −8.68), S22 −6.37 (−6.58) and BW 44.0 GHz (44.5); `ss/4.2 V/−40 °C`
+  for the gains 6.46 / 0.47 dB (6.47 / 0.48); the swing floor moves 1.74 →
+  **1.83 Vpp** (`ff/−40 °C`, valid sweeps only). Power tops at 184.4 mW
+  (`ff/4.2 V/−40 °C`). The margin hinges bought nominal margin; the corner
+  failures are electrical (junction C at hot-slow, gm at cold-slow) and a
+  corner-aware objective is the round that would address them (costed below).
+  The revert costs nothing at the corners: every worst value is within 0.06 dB
+  of the `run_29`-as-searched sweep.
+* **Mismatch MC, 200 + 200 + 200** (pair-only / all devices / no-mismatch
+  control, same seeds as the record's pack; `results/r4/verification.md`,
+  `mc.json`): 600/600 converged, the control set reproduces the halo-8 scalars
+  to the printed digit. Attribution is unchanged — output offset (σ 33.6 mV),
+  gains, BW and S11 spread are the differential pair; p/n gain imbalance
+  (9.2×), swing (7.8×) and S22 (16.3×) spread are the passives. Against the
+  acceptance box the swing margin does what it was bought for: swing failures
+  4.5 % → **0 %** (min 2.196 Vpp); S11 failures 26 % → 24 % (the revert gave
+  back 0.07 dB, so most of the `run_29` gain on this row — 15.5 % — is gone),
+  S22 4.5 → 9 % (0.03 dB closer to −10 at halo 8), gains and balance rates
+  within noise of the record's.
+* **EM** — output-network cut (S22) through `layout/em/` on `target_r4/`
+  (`layout/em/README.md` "Round-4 point", `target_r4/results.txt`): full-wave
+  S22 **−10.57 dB, −10 dB edge 53.9 GHz** against kpex's −10.25 / 51.6, bias
+  point within 0.4 % — the same margin the record's EM rung showed (−10.63).
+  The revert touches only the input buses, so this cut is the run_29 cut
+  re-solved: it reproduces the earlier EM result to 0.001 dB, which is the
+  lane's reproducibility check. The EM rung also measures the rail trim
+  kpex-at-halo-8 cannot see: C(outn, vcc) 1.73 → 0.61 fF. The input-side (S11)
+  cut — the one the revert actually changes — stays blocked on the mesh (three
+  of four input stubs open at DC at `cellsize 0.5`; the falsification run is
+  `lsbp` alone at 0.2 µm).
+
+**Status (owner ruling, 2026-09-02).** The paper leads with the record
+(`FINAL_LAYOUT`, run_26); this round is kept in the repo as the reviewer-response
+pack — the margin point, its PVT/MC/EM verification and the CM→diff audit — and
+is not a paper column unless a reviewer asks for margin evidence.
+
+**Next (costed).** A corner-aware round: the hook runs the benches at the two
+binding corners (`ss/125 °C`, `ss/−40 °C`) on top of nominal (+2 bench sets ≈
++12 s on a 35 s trial) and the corner metrics enter as soft hinges; the
+platform's `apply_corner_to_deck` (`feat/corner-to-deck`) is the seam the
+reviewer harness already uses. And the instrument fix the review flagged:
+`pn_gain_imb_db` / `pn_phase_imb_deg` take `max()` over the sampled grid
+instead of interpolating the 48 GHz edge as `_band_max` does for the other
+three scored metrics (+0.3 % / +0.6 % at 100 pts/dec — left unchanged for
+this round so r4 stays measurable against r3).
 
 ## Final scorecard
 

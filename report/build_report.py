@@ -93,8 +93,11 @@ TIERS = {
               layout=dict(gen_layout.V4_LAYOUT), bias=dict(gen_layout.V4_BIASES), elec=None),
     "f": dict(label="(f) co-design round 3 best-score point (r3_s12/run_26, the paper's design of record)", short="(f) record, co-designed",
               layout=dict(gen_layout.FINAL_LAYOUT), bias=dict(gen_layout.FINAL_BIASES), elec=None),
+    "g": dict(label="(g) co-design round 4 accepted point (r4_s10/run_29: reviewer-margin hinges + vcc_trim/rb_off options)", short="(g) round 4, co-designed",
+              layout=dict(gen_layout.R4_LAYOUT), bias=dict(gen_layout.R4_BIASES), elec=None),
 }
-COL = {"a": "#7f7f7f", "b": "#1f77b4", "c": "#ff7f0e", "d": "#d62728", "e": "#2ca02c", "f": "#9467bd"}
+COL = {"a": "#7f7f7f", "b": "#1f77b4", "c": "#ff7f0e", "d": "#d62728", "e": "#2ca02c", "f": "#9467bd", "g": "#17becf"}
+ALL_TIERS = "abcdefg"
 SPEC = [("lsb_gain", "gain LSB (dB)", "≥ 2.2"), ("msb_gain", "gain MSB (dB)", "≥ 8.2"),
         ("weight", "DAC weight (dB)", "≥ 5.0"), ("bw_msb", "BW MSB (GHz)", "≥ 50"),
         ("bw_lsb", "BW LSB (GHz)", "≥ 50"), ("s11", "S11 ≤ 32 GHz (dB)", "≤ −10"),
@@ -276,7 +279,7 @@ def eye_metrics(t, v, t0_ns, baud):
 
 # ------------------------------------------------------------------ figures
 def fig_eyes(EYE: dict, out: str) -> dict:
-    tiers = [k for k in "abcdef" if k in EYE]
+    tiers = [k for k in ALL_TIERS if k in EYE]
     n = len(tiers)
     fig, axs = plt.subplots(1, n, figsize=(3.6 * n, 3.4), sharey=True, squeeze=False)
     cmap = LinearSegmentedColormap.from_list("eye", ["#ffffff", "#c6dbef", "#4292c6", "#08306b", "#000000"])
@@ -325,7 +328,7 @@ def fig_eyes(EYE: dict, out: str) -> dict:
 
 def fig_sparams(SP: dict, out: str) -> None:
     fig, axs = plt.subplots(1, 3, figsize=(11, 3.3))
-    for k in "abcdef":
+    for k in ALL_TIERS:
         if k not in SP:
             continue
         s = SP[k]
@@ -351,7 +354,7 @@ def fig_sparams(SP: dict, out: str) -> None:
 
 def fig_dc_balance(SP: dict, out_dc: str, out_bal: str) -> None:
     fig, ax = plt.subplots(figsize=(4.2, 3.2))
-    for k in "abcdef":
+    for k in ALL_TIERS:
         if k in SP:
             ax.plot(SP[k]["dc"]["vd"], SP[k]["dc"]["vo"], color=COL[k], lw=1.3, label=TIERS[k]["short"])
     ax.axhline(1.05, color="k", lw=0.5, ls=":"); ax.axhline(-1.05, color="k", lw=0.5, ls=":")
@@ -359,7 +362,7 @@ def fig_dc_balance(SP: dict, out_dc: str, out_bal: str) -> None:
     ax.set_title("DC transfer (swing spec ≥ 2.1 V$_{pp}$ = ±1.05 V)"); ax.legend(fontsize=7)
     fig.tight_layout(); fig.savefig(out_dc + ".png", dpi=220); fig.savefig(out_dc + ".pdf"); plt.close(fig)
     fig, axs = plt.subplots(1, 3, figsize=(11, 3.0))
-    for k in "abcdef":
+    for k in ALL_TIERS:
         if k not in SP:
             continue
         b = SP[k]["bal"]
@@ -451,7 +454,7 @@ def fmt(v, key):
 
 
 def write_tables(M: dict, out_md: str) -> None:
-    tiers = [k for k in "abcdef" if k in M]
+    tiers = [k for k in ALL_TIERS if k in M]
     lines = ["| metric | spec | paper meas. | " + " | ".join(TIERS[k]["short"] for k in tiers) + " |",
              "|---|---|---|" + "---|" * len(tiers)]
     for key, name, spec in SPEC:
@@ -501,6 +504,9 @@ def main() -> None:
     ap.add_argument("--fullswing-nsym", type=int, default=10000)
     ap.add_argument("--no-eye", action="store_true")
     ap.add_argument("--reuse-eye", action="store_true", help="re-plot eyes from data/eye_<tier>.npz")
+    ap.add_argument("--fullswing-tier", default="", help="tier for the 900 mVpp / 10k-symbol eye (default: f when built)")
+    ap.add_argument("--merge", action="store_true",
+                    help="merge this run's tiers into the existing data/metrics.json instead of replacing it (a partial --tiers rebuild)")
     a = ap.parse_args()
     tiers = a.tiers.split(",")
     for d in (WORK, FIGS, DATA, LAY):
@@ -598,7 +604,8 @@ def main() -> None:
             M[k].update(eye_rlm=m["rlm"], eye_min_v=min(m["eyes"]), eye_vpp=m["vpp"], eye_levels_v=m["levels"], eye_openings_v=m["eyes"])
         print(f"   eyes done ({time.time() - t0:.0f} s)", flush=True)
     # full-swing eye for the record tier (paper Fig.: 900 mVpp in, 10k symbols)
-    fs_tier = "f" if "f" in tiers else None
+    fs_tier = a.fullswing_tier or ("f" if "f" in tiers else None)
+    assert fs_tier is None or fs_tier in tiers, f"--fullswing-tier {fs_tier} is not among --tiers"
     if fs_tier and not a.no_eye:
         fs_npz = os.path.join(DATA, f"eye_{fs_tier}_fullswing.npz")
         if a.reuse_eye and os.path.exists(fs_npz):
@@ -651,7 +658,13 @@ def main() -> None:
     # tables + data
     for k in tiers:
         M[k]["tier"] = TIERS[k]["label"]
-    json.dump(M, open(os.path.join(DATA, "metrics.json"), "w"), indent=1, default=float)
+    mpath_all = os.path.join(DATA, "metrics.json")
+    if a.merge and os.path.exists(mpath_all):
+        merged = json.load(open(mpath_all))
+        merged.update(M)
+        M = {k: merged[k] for k in ALL_TIERS if k in merged}
+        tiers = [k for k in ALL_TIERS if k in M]
+    json.dump(M, open(mpath_all, "w"), indent=1, default=float)
     keys = sorted({kk for m in M.values() for kk in m if not isinstance(m[kk], (list, dict))})
     with open(os.path.join(DATA, "metrics.csv"), "w", newline="") as f:
         w = csv.writer(f); w.writerow(["metric"] + tiers)

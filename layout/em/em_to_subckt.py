@@ -33,6 +33,10 @@ def main() -> None:
     ap.add_argument("--poles", type=int, default=12)
     ap.add_argument("--dc-r", default="",
                     help='DC anchor: "1:2=0.8,3:4=1.2" port pairs (1-based) with ohms')
+    ap.add_argument("--sv-tol", type=float, default=1e-3,
+                    help="accept a NEAR-passive fit whose worst sampled singular value is < 1 + sv_tol (default 1e-3)")
+    ap.add_argument("--no-enforce", action="store_true",
+                    help="skip scikit-rf passivity enforcement (unbounded on ill-conditioned 13-port models); rely on --sv-tol")
     ap.add_argument("--dc-from-data", action="store_true",
                     help="DC anchor from the data itself: the conductance graph "
                          "Re(Y) at the lowest kept frequency")
@@ -46,7 +50,8 @@ def main() -> None:
             i, j = (int(x) for x in lhs.split(":"))
             dc_r[(i, j)] = float(r)
     out = em.em_to_subckt(a.touchstone, a.out, name=a.name, n_poles=a.poles,
-                          dc_r=dc_r, dc_from_data=a.dc_from_data)
+                          dc_r=dc_r, dc_from_data=a.dc_from_data,
+                          sv_tol=a.sv_tol, enforce=not a.no_enforce)
     print("wrote", out)
 
 

@@ -28,6 +28,8 @@ through `spicexplorer-optimize`, `sim_engine: layout`; v4 is the layout of recor
   remote-simulator bridge (`virtuoso-bridge-lite`, carried by the lab's `analog-skill-directory` with its `spectre` and `virtuoso` skills): decks are built here, uploaded by basename with *relative* `include`s,
   simulated there, and only results come back. Kit bytes never reach the workstation or the model (`pdk_guard`
   blocks it); every server-side artifact is design-named, never tool-named (`naming_guard`).
+  **A declined `/CMC` prompt is never a stop:** continue without those bytes (the kit is consumed by path
+  on the server; open-PDK files are unrestricted; ask the person one sentence if a kit fact is needed).
 - **SpiceXplorer first.** Before writing a script, use what exists and compose it: the platform packages
   (`spicexplorer_core` — `spice_engine.run_deck`, measurements; `spicexplorer_harness` — ledger, pack, lint,
   spec; `spicexplorer-optimize`; `spicexplorer_gmid`; `spicexplorer_layout` + `spicexplorer_signoff`;

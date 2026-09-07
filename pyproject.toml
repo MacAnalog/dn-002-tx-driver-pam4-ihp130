@@ -19,5 +19,10 @@ dependencies = [
     "nbconvert>=7.17.1", # jupytext --execute backend
 ]
 
+[dependency-groups]
+# the test runner is a declared dependency so `make test` / `uv run pytest` work on a fresh clone (it used
+# to rely on `uv run --with pytest`, which the gate runners on the lab accounts do not do)
+dev = ["pytest>=8"]
+
 [tool.uv]
 package = false

@@ -9,6 +9,7 @@
 #   make codesign   one island of the platform co-design loop (paper Alg. 1)
 #   make report     rebuild the reviewer report (report/: figs, data, layout evidence)
 #   make verify-report  re-run every number of the final results from static decks + DRC/LVS (verification/)
+#   make test       unit tests (tests/) — no simulator, no PDK activation needed
 #   make all        verify + eye + signoff + notebooks
 
 # Machine-specific tool locations live in an untracked local.mk
@@ -83,3 +84,6 @@ verify-report:
 clean:
 	rm -rf notebooks/nb_opt notebooks/*.ipynb layout/out/signoff report/work verification/work
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +
+
+test:  ## unit tests (tests/): fast, no simulator, no PDK activation
+	uv run pytest -q tests

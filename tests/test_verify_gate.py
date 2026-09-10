@@ -9,7 +9,17 @@ clean one, which is the worst failure mode a verification script has):
 2. `if key in got and key in exp` skipped a number that the run failed to
    produce, so a measurement that vanished was not a FAIL, it was nothing;
 3. `SystemExit(0 if n_ok == n else 1)` exits 0 when n == 0 — "0/0 numbers
-   reproduce" is a green run that verified nothing.
+   reproduce" is a green run that verified nothing;
+4. a deck that failed still lent its numbers to the run: the deck's own row
+   FAILED, but the numbers extracted from the CSV it did NOT write this run were
+   still printed `PASS <metric> got X expected X` and recorded ok:true in
+   last_run.json — the per-row record asserted a reproduction that never
+   happened. Those rows must read STALE and fail, and ONLY the rows whose deck
+   failed (a failed s22 deck must not invalidate lsb_gain).
+
+Plus a coverage guard: every key of expected.json is accounted for by the
+manifest in verify.py, so a number of the record cannot be added and then be
+silently checked by nothing.
 
 No simulator, no PDK: `ngspice` is a stub script on PATH.
 """
@@ -39,23 +49,28 @@ def verify(monkeypatch):
     return v
 
 
-def _stub_ngspice(tmp_path, monkeypatch, rc):
-    """put an `ngspice` on PATH that does nothing and exits with `rc`"""
+def _stub_ngspice(tmp_path, monkeypatch, rc, fail_decks=()):
+    """put an `ngspice` on PATH that does nothing and exits with `rc`
+
+    fail_decks: deck file names (`ngspice -b <name>`) that exit 1 instead, so a
+    test can fail one deck out of ten and check that only ITS numbers go stale.
+    """
     bindir = tmp_path / "bin"
     bindir.mkdir()
     exe = bindir / "ngspice"
-    exe.write_text(f"#!/bin/sh\nexit {rc}\n")
+    cases = "".join(f'  {d}) exit 1 ;;\n' for d in fail_decks)
+    exe.write_text(f"#!/bin/sh\ncase \"$2\" in\n{cases}esac\nexit {rc}\n")
     exe.chmod(0o755)
     monkeypatch.setenv("PATH", str(bindir) + os.pathsep + os.environ.get("PATH", ""))
     monkeypatch.setenv("PDK_ROOT", str(tmp_path / "pdk"))
 
 
-def _deck_dir(tmp_path, monkeypatch, verify, tier="a", with_csvs=False):
+def _deck_dir(tmp_path, monkeypatch, verify, tier="a", with_csvs=False, with_eye=False):
     d = tmp_path / "decks" / tier
     d.mkdir(parents=True)
     if with_csvs:                       # the previous run's output, as a fresh clone has it
         for f in os.listdir(os.path.join(VERIFICATION, "decks", tier)):
-            if (f.endswith(".csv") and not f.startswith("eye")) or f == "meta.json":
+            if (f.endswith(".csv") and (with_eye or not f.startswith("eye"))) or f == "meta.json":
                 shutil.copy(os.path.join(VERIFICATION, "decks", tier, f), d / f)
     monkeypatch.setattr(verify, "DECKS", str(tmp_path / "decks"))
     return d
@@ -69,8 +84,82 @@ def test_failed_deck_cannot_report_all_pass(tmp_path, monkeypatch, verify):
     verify.step_sim("a", no_eye=True)
 
     assert verify.RESULTS, "a run of ten failing decks recorded no result at all"
-    assert any(not r[5] for r in verify.RESULTS), (
-        "every ngspice run failed but every check passed (stale CSVs were re-scored)")
+    deck_rows = {r[1]: r for r in verify.RESULTS if r[1].startswith("ngspice ")}
+    assert deck_rows, "the ngspice runs themselves were not recorded as checks"
+    assert all(r[3] == "FAILED" and not r[5] for r in deck_rows.values()), (
+        f"a deck whose ngspice exited 1 was not recorded as FAILED: "
+        f"{[(k, v[3], v[5]) for k, v in deck_rows.items() if v[5]]}")
+
+
+def test_numbers_of_a_failed_deck_are_reported_stale_not_reproduced(tmp_path, monkeypatch, verify):
+    """THE defect: with every deck failed, the numbers extracted from the PREVIOUS run's
+    committed CSVs were printed `PASS lsb_gain got 3.09 expected 3.09` and written to
+    last_run.json with ok:true. A number this run never simulated is not a reproduction."""
+    _stub_ngspice(tmp_path, monkeypatch, rc=1)
+    _deck_dir(tmp_path, monkeypatch, verify, with_csvs=True)
+
+    verify.step_sim("a", no_eye=True)
+
+    rows = {r[1]: r for r in verify.RESULTS}
+    exp = verify.EXPECTED["tiers"]["a"]
+    stale = getattr(verify, "STALE", "STALE")     # value assertions first: no mechanism needed to fail
+    for key in ("lsb_gain", "msb_gain", "weight", "s22", "swing", "power"):
+        assert key in rows, f"{key} is on record but the run produced no line for it"
+        got, ok = rows[key][3], rows[key][5]
+        assert not ok, (
+            f"{key} got {got!r} scored as reproducing {exp[key]} on a run in which every deck failed "
+            f"— that number came out of the PREVIOUS run's committed CSV")
+        assert not isinstance(got, (int, float)), (
+            f"{key}: the run reported the number {got!r} it never simulated (stale CSV re-scored)")
+        assert got == stale, f"{key}: a number whose deck failed should read STALE, got {got!r}"
+    scored = [r for r in verify.RESULTS if not r[1].startswith("ngspice ")]
+    assert scored and not any(r[5] for r in scored), (
+        f"numbers still passed on a run in which every deck failed: {[r[1] for r in scored if r[5]]}")
+
+
+def test_only_the_numbers_of_the_failed_deck_go_stale(tmp_path, monkeypatch, verify):
+    """the converse: one broken deck must not invalidate the nine that ran. s22.spice fails,
+    so s22 / s22_edge_ghz are STALE — and lsb_gain, which comes from ac_lsb.csv, still passes."""
+    _stub_ngspice(tmp_path, monkeypatch, rc=0, fail_decks=("s22.spice",))
+    _deck_dir(tmp_path, monkeypatch, verify, with_csvs=True)
+
+    verify.step_sim("a", no_eye=True)
+
+    rows = {r[1]: r for r in verify.RESULTS}
+    stale = getattr(verify, "STALE", "STALE")
+    for key in ("s22", "s22_edge_ghz"):
+        got, ok = rows[key][3], rows[key][5]
+        assert not ok, f"{key} came from the failed s22 deck's stale CSV yet reported got {got!r} as reproducing"
+        assert got == stale, f"{key} should read STALE, got {got!r}"
+    for key in ("lsb_gain", "msb_gain", "swing", "power"):
+        assert rows[key][5], f"{key} should still reproduce when only the s22 deck failed"
+        assert rows[key][3] != stale, f"{key}'s deck ran fine; marking it stale fails the whole run for nothing"
+    assert not rows["ngspice s22"][5] and rows["ngspice ac_lsb"][5]
+
+
+def test_eye_levels_of_the_record_are_checked(tmp_path, monkeypatch, verify):
+    """eye_levels_v is on record for every tier and was checked by no step at all —
+    a simulated number of the record that verify.py passed over in silence."""
+    _stub_ngspice(tmp_path, monkeypatch, rc=0)
+    _deck_dir(tmp_path, monkeypatch, verify, with_csvs=True, with_eye=True)
+
+    verify.step_sim("a", no_eye=False)
+
+    rows = {r[1]: r for r in verify.RESULTS}
+    assert "eye_levels_v" in rows, "eye_levels_v is a number of the record that no check ever looked at"
+    assert rows["eye_levels_v"][5], f"eye_levels_v did not reproduce: {rows['eye_levels_v']}"
+
+
+def test_coverage_manifest_accounts_for_every_key_of_the_record(tmp_path, monkeypatch, verify):
+    """forward guard: a key added to expected.json must be checked by a step or listed as
+    unverified — it may not become a number of the record that nothing looks at."""
+    known = set(verify.SIM_KEYS) | set(verify.SIM_LIST_KEYS) | set(verify.LAYOUT_KEYS) \
+        | set(verify.LABEL_KEYS) | set(verify.UNVERIFIED_KEYS)
+    for tier, exp in verify.EXPECTED["tiers"].items():
+        unaccounted = set(exp) - known
+        assert not unaccounted, (
+            f"tier {tier}: {sorted(unaccounted)} on record but in no coverage list of verify.py "
+            f"— add them to a *_KEYS tuple (checked) or to UNVERIFIED_KEYS (documented gap)")
 
 
 def test_missing_number_is_a_failure(tmp_path, monkeypatch, verify):
@@ -112,7 +201,8 @@ def test_zero_checks_exits_non_zero(tmp_path, monkeypatch, verify):
     with pytest.raises(SystemExit) as e:
         verify.main()
 
-    assert e.value.code not in (0, None), "0/0 numbers reproduce exited 0"
+    assert e.value.code == 2, f"0/0 numbers reproduce should be exit 2, got {e.value.code!r}"
+    assert json.load(open(tmp_path / "last_run.json")) == [], "a run that happened must leave its record"
 
 
 def test_unknown_step_exits_non_zero(tmp_path, monkeypatch, verify):
@@ -123,7 +213,10 @@ def test_unknown_step_exits_non_zero(tmp_path, monkeypatch, verify):
     with pytest.raises(SystemExit) as e:
         verify.main()
 
-    assert e.value.code not in (0, None), "an unknown --step verified nothing and exited 0"
+    assert e.value.code == 2, (
+        f"an unknown --step verified nothing; the documented code for that is 2, got {e.value.code!r}")
+    assert not os.path.exists(tmp_path / "last_run.json"), (
+        "no run happened for an unusable --step, so it must not leave a run record")
 
 
 def test_last_run_json_is_written_even_when_nothing_ran(tmp_path, monkeypatch, verify):

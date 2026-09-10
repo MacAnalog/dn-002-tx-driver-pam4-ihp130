@@ -86,20 +86,34 @@ def eye_metrics(t, v, t0_ns, baud):
 
 
 # ---------------------------------------------------------------- extraction
-def load(d, name):
+def load_csv(d, name, skip=()):
+    """the CSV as an array, or None when it is absent OR named in `skip`
+
+    `skip` is how a caller says "this CSV on disk is NOT this run's output": the
+    deck CSVs are committed files, so a deck ngspice failed to run leaves the
+    PREVIOUS run's numbers there. Treating such a CSV as not-run is what keeps a
+    stale number out of the result instead of scoring it as reproduced.
+    """
     p = os.path.join(d, name)
-    return np.loadtxt(p) if os.path.exists(p) else None
+    return np.loadtxt(p) if (name not in skip and os.path.exists(p)) else None
 
 
-def extract(tier: str, deck_dir: str | None = None, verbose: bool = True) -> dict:
+def extract(tier: str, deck_dir: str | None = None, verbose: bool = True, skip=()) -> dict:
+    """every number the CSVs in `deck_dir` allow
+
+    skip: CSV file names to treat as not-run (a deck whose ngspice run failed —
+    its file on disk is the previous run's output, not this run's).
+    """
     d = deck_dir or os.path.join(HERE, "decks", tier)
+    skip = frozenset(skip)
+    load = lambda name: load_csv(d, name, skip)    # noqa: E731
     meta = json.load(open(os.path.join(d, "meta.json")))
     out: dict = {}
     say = (lambda *a: print(*a)) if verbose else (lambda *a: None)
     say(f"== tier {tier}: {meta['label']}   (decks: {os.path.relpath(d)})")
     ac = {}
     for drv in ("lsb", "msb"):
-        a = load(d, f"ac_{drv}.csv")
+        a = load(f"ac_{drv}.csv")
         if a is None:
             say(f"   ac_{drv}.csv: not run"); continue
         f, s21, s11 = a[:, 0] / 1e9, a[:, 1], a[:, 3]
@@ -118,7 +132,7 @@ def extract(tier: str, deck_dir: str | None = None, verbose: bool = True) -> dic
         say(f"   bw        = min(bw_lsb, bw_msb)                    = {out['bw']:8.2f} GHz")
         say(f"   s11       = max(s11_lsb, s11_msb)                  = {out['s11']:8.3f} dB")
         say(f"   s11_edge  = min over paths of the -10 dB crossing  = {out['s11_edge_ghz']:8.2f} GHz")
-    a = load(d, "s22.csv")
+    a = load("s22.csv")
     if a is None:
         say("   s22.csv: not run")
     else:
@@ -126,7 +140,7 @@ def extract(tier: str, deck_dir: str | None = None, verbose: bool = True) -> dic
         out["s22"] = band_max(f, s22, S22_BAND_GHZ); out["s22_edge_ghz"] = edge(f, s22)
         say(f"   s22       = max Sdd22 over f<=50 GHz incl. edge    = {out['s22']:8.3f} dB")
         say(f"   s22_edge  = -10 dB crossing (interp.)              = {out['s22_edge_ghz']:8.2f} GHz")
-    a = load(d, "balance.csv")
+    a = load("balance.csv")
     if a is None:
         say("   balance.csv: not run")
     else:
@@ -143,14 +157,14 @@ def extract(tier: str, deck_dir: str | None = None, verbose: bool = True) -> dic
         if a.shape[1] > 13:                       # sp deck's mixed-mode CM->DM column
             out["cm_dm_db"] = band_max(f, a[:, 13], 50.0)
             say(f"   cm_dm        = max dB|Sdc21| (CM in, DM out), <=50 GHz = {out['cm_dm_db']:8.2f} dB")
-    a = load(d, "dc.csv")
+    a = load("dc.csv")
     if a is None:
         say("   dc.csv: not run")
     else:
         vo = a[:, 1]
         out["swing"] = float(vo.max() - vo.min())
         say(f"   swing     = max - min of Vout,diff over the .dc    = {out['swing']:8.3f} Vpp")
-    a = load(d, "bias.csv")
+    a = load("bias.csv")
     if a is None:
         say("   bias.csv: not run")
     else:
@@ -161,7 +175,7 @@ def extract(tier: str, deck_dir: str | None = None, verbose: bool = True) -> dic
         say(f"   power     = mean|I(Vcc)| for t>={hold0:g} ns x {meta['vcc']:g} V  = {out['power']:8.2f} mW")
         say(f"   ic/finger = tail_ma/2/nx = {meta['cell']['tail_ma']:g}/2/{meta['cell']['nx']}      = {out['ic_ma_per_finger']:8.3f} mA")
     # independent-method cross-checks: legacy in-deck .ac algebra (primary decks = ngspice `sp`)
-    a = load(d, "ac_msb_alg.csv")
+    a = load("ac_msb_alg.csv")
     if a is not None:
         f, s21, s11 = a[:, 0] / 1e9, a[:, 1], a[:, 3]
         lf = float(s21[np.argmin(np.abs(f - 1.0))])
@@ -169,12 +183,12 @@ def extract(tier: str, deck_dir: str | None = None, verbose: bool = True) -> dic
         out["alg_s11_msb"] = band_max(f, s11, S11_BAND_GHZ); out["alg_s11_edge_msb"] = edge(f, s11)
         say(f"   [alg] msb_gain / bw_msb / s11_msb / edge (legacy .ac algebra) = "
             f"{lf:.3f} dB / {out['alg_bw_msb']:.2f} GHz / {out['alg_s11_msb']:.3f} dB / {out['alg_s11_edge_msb']:.2f} GHz")
-    a = load(d, "s22_alg.csv")
+    a = load("s22_alg.csv")
     if a is not None:
         f, s22 = a[:, 0] / 1e9, a[:, 1]
         out["alg_s22"] = band_max(f, s22, S22_BAND_GHZ); out["alg_s22_edge_ghz"] = edge(f, s22)
         say(f"   [alg] s22 / edge (legacy .ac algebra)                = {out['alg_s22']:.3f} dB / {out['alg_s22_edge_ghz']:.2f} GHz")
-    a = load(d, "balance_alg.csv")
+    a = load("balance_alg.csv")
     if a is not None:
         f = a[:, 0] / 1e9
         gp, gn, php, phn, cm, dd = a[:, 1], a[:, 3], a[:, 5], a[:, 7], a[:, 9], a[:, 11]
@@ -184,13 +198,13 @@ def extract(tier: str, deck_dir: str | None = None, verbose: bool = True) -> dic
         out["alg_cm_leak_dbc"] = band_max(f, cm - dd, BAL_BAND_GHZ)
         say(f"   [alg] balance (legacy .ac node voltages)               = {out['alg_pn_gain_imb_db']:.3f} dB / "
             f"{out['alg_pn_phase_imb_deg']:.3f} deg / {out['alg_cm_leak_dbc']:.2f} dBc")
-    a = load(d, "cmdm_alg.csv")
+    a = load("cmdm_alg.csv")
     if a is not None:
         f, dd = a[:, 0] / 1e9, a[:, 11]
         # CM drive with 0.5 V EMF per side: A_cd = dB(2*(Vp - Vn)) = ddb + 6.02
         out["alg_cm_dm_db"] = band_max(f, dd + 20 * np.log10(2.0), 50.0)
         say(f"   [alg] cm_dm (CM drive, .ac node voltages), <=50 GHz    = {out['alg_cm_dm_db']:8.2f} dB")
-    a = load(d, "eye_fs.csv")
+    a = load("eye_fs.csv")
     if a is not None:
         import json as _json
         meta = _json.load(open(os.path.join(d, "meta.json")))
@@ -216,7 +230,7 @@ def extract(tier: str, deck_dir: str | None = None, verbose: bool = True) -> dic
         out["eye_fs_min_width_ps"] = min(widths) * 1e12
         say(f"   eye_fs       = full-swing eye: min opening {em['eye_min_v']*1e3:.0f} mV, "
             f"min width {min(widths)*1e12:.2f} ps, RLM {em['eye_rlm']:.4f}")
-    a = load(d, "eye.csv")
+    a = load("eye.csv")
     if a is None:
         say("   eye.csv: not run")
     else:

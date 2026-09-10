@@ -27,9 +27,16 @@ the last printed digit — the tolerances are set at about that level.
 Exit codes — a run that did not verify something never exits 0:
     0  every check ran and passed
     1  at least one check failed: a number out of tolerance, a deck ngspice did
-       not run (its .csv on disk is the PREVIOUS run's and must not be scored as
-       this one's), or a number on record the run did not produce (MISSING)
-    2  the selection verified nothing at all (0 checks) — not a pass
+       not run, a number whose deck failed so its .csv on disk is the PREVIOUS
+       run's (STALE), or a number on record the run did not produce (MISSING)
+    2  the selection verified nothing at all — 0 checks, or a --step that names
+       no runnable step (empty / unknown). Not a pass; nothing is written to
+       last_run.json for an unusable --step, since no run happened.
+
+What is and is not checked (the coverage manifest below is the authority, and
+tests/test_verify_gate.py asserts it accounts for every key of expected.json):
+SIM_KEYS + SIM_LIST_KEYS come out of the decks, LAYOUT_KEYS out of --step
+layout, and UNVERIFIED_KEYS are numbers of the record that NO step reproduces.
 """
 from __future__ import annotations
 
@@ -59,14 +66,27 @@ SIM_KEYS = ("lsb_gain", "msb_gain", "weight", "bw_lsb", "bw_msb", "bw", "s11_lsb
             "cm_dm_db", "swing", "power", "ic_ma_per_finger", "eye_rlm", "eye_min_v", "eye_vpp",
             "eye_fs_min_v", "eye_fs_min_width_ps", "eye_fs_rlm")
 
+# list-valued numbers of the record that step_sim also checks (the eye clusters)
+SIM_LIST_KEYS = ("eye_levels_v", "eye_openings_v")
+# numbers of the record that --step layout reproduces
+LAYOUT_KEYS = ("drc_pass", "lvs_match", "width_um", "height_um", "area_um2", "pex_n_c", "pex_n_r")
+# NOT a number: the tier's human label
+LABEL_KEYS = ("tier",)
+# On record, reproduced by NO step of this script. Listed here so the hole is visible and tested
+# (tests/test_verify_gate.py) rather than silent: `verify.py` passing does NOT mean these were
+# re-derived. GAP: the output-node ground capacitances would need a PEX-netlist reader.
+UNVERIFIED_KEYS = ("c_outp_gnd_ff", "c_outn_gnd_ff")
+
 MISSING = "MISSING"          # sentinel: the run produced no value for a number that is on record
+STALE = "STALE"              # sentinel: its deck failed this run — the .csv on disk is the last run's
+NOT_REPRODUCED = (MISSING, STALE)     # got-values that are never a pass, whatever `expected` says
 RESULTS: list[tuple[str, str, str, object, object, bool]] = []   # tier, key, unit, got, exp, ok
 
 
 def check(tier: str, key: str, got, exp, tol=None, unit=""):
     if exp is None:
         return
-    if got is MISSING:                 # on record, not produced by this run -> FAIL, whatever exp is
+    if isinstance(got, str) and got in NOT_REPRODUCED:   # not produced by THIS run -> FAIL, whatever exp is
         ok = False
     elif isinstance(exp, (list, tuple)):
         ok = all(abs(g - e) <= (tol or 0) for g, e in zip(got, exp)) and len(got) == len(exp)
@@ -101,6 +121,7 @@ def step_sim(tier: str, no_eye: bool) -> None:
             raise SystemExit(f"{env} not set (the decks' .spiceinit resolves the IHP models through $PDK_ROOT/$PDK)")
     os.environ.setdefault("PDK", "ihp-sg13g2")
     order = ORDER + (["eye_fs"] if os.path.exists(os.path.join(d, "eye_fs.spice")) else [])
+    stale: set[str] = set()           # CSVs on disk that this run did NOT produce
     for name in order:
         if name.startswith("eye") and no_eye:
             continue
@@ -111,7 +132,17 @@ def step_sim(tier: str, no_eye: bool) -> None:
         # the previous run (the CSVs are tracked), so extraction below would happily re-score
         # yesterday's numbers and report that everything reproduces. Record the deck as a check.
         check(tier, f"ngspice {name}", "ok" if ok else "FAILED", "ok")
-    got = extract.extract(tier, d, verbose=False)
+        if not ok:
+            stale.add(name + ".csv")
+    # ...and, beyond failing on its own row, a failed deck must not lend its numbers to the run:
+    # extraction is told to treat those CSVs as not-run, so every number derived from one (directly
+    # or through a combination like weight = msb_gain - lsb_gain) drops out of `got` and is scored
+    # STALE below instead of "reproduces". `full` is the same extraction WITHOUT that suppression,
+    # used only to tell "its deck failed" (STALE) apart from "the deck ran and produced nothing"
+    # (MISSING) in the report.
+    got = extract.extract(tier, d, verbose=False, skip=stale)
+    full = extract.extract(tier, d, verbose=False) if stale else got
+    absent = lambda key: STALE if key in full else MISSING            # noqa: E731
     exp = EXPECTED["tiers"][tier]
     for key in SIM_KEYS:
         if key not in exp:
@@ -124,7 +155,7 @@ def step_sim(tier: str, no_eye: bool) -> None:
             check(tier, key, got[key], exp[key], TOL.get(key, TOL["default"]), EXPECTED["units"].get(key, ""))
         else:
             # on record but not produced by this run: a missing measurement is a FAIL, never a skip
-            check(tier, key, MISSING, exp[key], None, EXPECTED["units"].get(key, ""))
+            check(tier, key, absent(key), exp[key], None, EXPECTED["units"].get(key, ""))
     # independent method (legacy .ac algebra) must agree with the primary `sp` decks
     for a_, b_, tol_, unit in (("alg_msb_gain", "msb_gain", 0.01, "dB"), ("alg_bw_msb", "bw_msb", 0.05, "GHz"),
                                ("alg_s11_msb", "s11_msb", 0.01, "dB"), ("alg_s11_edge_msb", "s11_edge_ghz", 0.05, "GHz"),
@@ -137,11 +168,13 @@ def step_sim(tier: str, no_eye: bool) -> None:
             continue          # ideal-symmetry noise floor: both methods read < -150, exact value is numerical
         if a_ in got and b_ in got and (b_ != "s11_edge_ghz" or got["s11_msb"] >= got.get("s11_lsb", -1e9)):
             check(tier, f"{a_} == {b_}", got[a_], got[b_], tol_, unit + "  (legacy .ac algebra vs ngspice sp)")
-    if "eye_openings_v" in exp and not no_eye:
-        if "eye_openings_v" in got:
-            check(tier, "eye_openings_v", got["eye_openings_v"], exp["eye_openings_v"], TOL["eye_min_v"], "V")
+    for key in SIM_LIST_KEYS:         # eye level/opening clusters — lists, so their own loop
+        if key not in exp or no_eye:
+            continue
+        if key in got:
+            check(tier, key, got[key], exp[key], TOL["eye_min_v"], "V")
         else:
-            check(tier, "eye_openings_v", MISSING, exp["eye_openings_v"], None, "V")
+            check(tier, key, absent(key), exp[key], None, "V")
 
 
 def step_layout(tier: str) -> None:
@@ -213,7 +246,8 @@ def main() -> None:
     steps = [s.strip() for s in a.step.split(",") if s.strip()]
     bad = [s for s in steps if s not in STEPS]
     if bad or not steps:              # a mistyped step used to run nothing and exit 0
-        raise SystemExit(f"--step: {', '.join(bad) or 'empty'} — choose from {', '.join(STEPS)}")
+        print(f"--step: {', '.join(bad) or 'empty'} — choose from {', '.join(STEPS)}", file=sys.stderr)
+        raise SystemExit(2)           # same class as "verified nothing at all"; see the exit codes above
     for tier in a.tier.split(","):
         print(f"== tier {tier}: {EXPECTED['tiers'][tier]['tier']}")
         if "sim" in steps:

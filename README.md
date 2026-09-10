@@ -16,22 +16,23 @@ closes **all eight post-layout specs**.
   ([`report/`](report/README.md)) — schematic versus every layout tier
   through the same benches, DRC/LVS/PEX evidence, GDS + netlists, KLayout
   renders, eyes, tables (`make report`).
-- **Every number in the final table re-runs by hand** from static ngspice
-  decks: [`verification/`](verification/README.md) (`make verify-report`).
+- **Every result below reproduces from this repo**, and every number in the
+  final table re-runs by hand from static ngspice decks:
+  [`verification/`](verification/README.md) (`make verify-report`).
 
-## Layout history: v1 → v2 → v3 → v4 → the record
+## Layout history: v1 → v2 → v3 → v4 → the record → round 4
 
 Original v1 layout (edge-fed input, 1.8 µm output-bus gap, nx=2 / R_C=70 Ω
 electrical point) → the co-designed v4 layout:
 
-![before/after layout: original v1 vs the co-designed layout of record](layout/before_after.png)
+![before/after layout: original v1 vs the co-designed v4 layout](layout/before_after.png)
 
 ### v1 → v2 — what the first pass missed, and what fixed it
 
 The first optimization pass scored only S11/BW/gain/power. Its winner
 (nx=2, R_C=70 Ω) met those four and **failed S22 (−8.3 dB) and output swing
-(2.07 Vpp)**; neither was in the objective, so the full signoff in notebook
-03 was the first bench to measure them. An expert RF layout review plus a
+(2.07 Vpp)**; neither was in the objective, and the full signoff in notebook
+03 caught them. An expert RF layout review plus a
 directed probe ladder produced the v2 fix (`layout/before_after_v2.png`
 shows v1 → v2).
 
@@ -58,8 +59,9 @@ DRC/LVS as gates; `layout/codesign/`) first fixed **the instrument**:
   were the worst points of a `dec 20` grid that never samples 32 / 50 GHz;
   at the band edges v2 reads **−9.94 / −9.24 dB and fails both reflection
   specs**.
-- **The extraction halo cut the coupling being tuned.** `out_gap` sat on the
-  extractor's 8 µm sidewall halo; the search now runs at `pex.halo_um: 20`.
+- **The extraction halo sat on the geometry being tuned.** `out_gap` sat on
+  the extractor's 8 µm sidewall halo; the search now runs at
+  `pex.halo_um: 20`.
 
 Then two rounds:
 
@@ -71,7 +73,7 @@ Then two rounds:
 
 ![before/after co-design](layout/codesign/before_after.png)
 
-| quantity | v2 (record then) | **v3 accepted** |
+| quantity | v2 (the record at the time) | **v3 accepted** |
 |---|---|---|
 | S11 @ 32 GHz (dB) | −9.94 ✗ | **−10.05** ✅ (halo 20: −10.07) |
 | S22 @ 50 GHz (dB) | −9.24 ✗ | **−10.72** ✅ (halo 20: −10.78) |
@@ -116,8 +118,8 @@ at:
 Two results the round settled:
 
 - **The *symmetric* metal options and the input-row swap are nulls** — both
-  were measured and moved nothing. The balance came from the per-net C budget
-  (output-net asymmetry 2.01 → 1.46 fF) and the electrical point.
+  were measured. The balance came from the per-net C budget (output-net
+  asymmetry 2.01 → 1.46 fF) and the electrical point.
 - **The round's ceiling is a balance/S22 trade**: every larger balance gain
   costs 0.1–0.5 dB of S22, and only 6 of 520 trials hold both reflections at
   the v3 level. *Missing figure: p/n balance against S22 over the 520 trials
@@ -142,11 +144,31 @@ What that buys and what it costs, against v4:
 - **Power 167 mW** — −13 % vs the reference paper's 192 mW.
 - **diff→CM −52.7 dBc.**
 - **Swing 2.11 Vpp**, against v4's 2.24 Vpp.
-- **S22 margin −10.28 dB**, against v4's −10.81 dB.
+- **S22 margin −10.28 dB**, against v4's −10.71 dB at the same
+  instrument (`report/data/tables.md`, tiers (f) and (e)).
 
 All eight specs are still met at the report instrument.
 
-#### Where the co-optimization actually happens (the script to read)
+### Round 4 — reviewer-margin hinges (`R4_LAYOUT`, report tier (g))
+
+**The record does not move.** Round 4 kept the round-3 objective and turned
+the reviewer margins into feasibility hinges, adding two review-driven
+generator options (`vcc_trim`, `rb_off`). Its accepted point is `R4_LAYOUT` =
+`r4_s10/run_29` with `rb_off` and `in_bus_lvl` reverted to the record's
+values by the post-round review. Owner ruling 2026-09-02 keeps the paper's
+round-3 column as `gen_layout.FINAL_LAYOUT`; round 4 is reviewer-response
+evidence.
+
+- **The round's story and its numbers:**
+  [layout/codesign/README.md](layout/codesign/README.md) "Round 4", and
+  column (g) of `report/data/tables.md`.
+- **Post-layout verification of the round-4 point**, including the 36-corner
+  PVT sweep and the Monte-Carlo sets:
+  [layout/codesign/results/r4/verification.md](layout/codesign/results/r4/verification.md).
+- **Figures:** `layout/codesign/before_after_r4.png`,
+  `layout/codesign/pam4_layout_annotated_r4.png`, `report/figs/round4/`.
+
+### Where the co-optimization actually happens (the script to read)
 
 The agent-generated layout (`layout/gen_layout.py`, a gdsfactory generator
 whose `LayoutParams` are the knobs) and the schematic sizing were co-optimized
@@ -253,7 +275,7 @@ everywhere: kpex CC, tech-default halo 8.
 
 ![48 GBd eyes, all tiers](report/figs/fig_eye.png)
 
-**First-pass (b) vs co-designed (d) layout, KLayout render:**
+**First-pass (b) vs the record (f), KLayout render:**
 
 ![first-pass vs co-designed layout, KLayout render](report/figs/fig_layout_b_vs_d.png)
 
@@ -280,13 +302,14 @@ every optimizer knob annotated):
 
 The notebook-03 signoff figures (`notebooks/report_figs/{pam4_layout_final,
 eye_48gbd_pam4,sparams_s21_s11_s22,dc_transfer_dac_levels}.png`) are the
-**v2** layout of record (they run on `layout/out/pex/dut_pam4_best_post.spice`);
-`report/` supersedes them for v3 / v4.
+**v2** layout of record; they run on
+`layout/out/pex/dut_pam4_best_post.spice`, and `report/` supersedes them for
+every later tier.
 
 The report plots regenerate with `make report`, the notebook plots from
-`notebooks/03_signoff.py`; the executed
-notebooks (`.ipynb` built locally from the paired `.py`, `make notebooks`)
-contain every table and figure inline:
+`notebooks/03_signoff.py`. The executed notebooks (`.ipynb` built locally
+from the paired `.py`, `make notebooks`) contain every table and figure
+inline:
 
 | notebook | contents |
 |---|---|

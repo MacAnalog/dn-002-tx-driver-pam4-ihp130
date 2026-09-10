@@ -183,10 +183,10 @@ budget.
 **Generated with `spicexplorer-netlist2xschem`** from the DUT netlists, then
 hand-edited to follow the paper's figures:
 
-| sheet | paper figure | what it is |
+| sheet | paper figure | note |
 |---|---|---|
-| `dut_lsb.sch` | Fig. 2(a) | |
-| `dut_msb.sch` | Fig. 2(b) | |
+| `dut_lsb.sch` | Fig. 2(a) | — |
+| `dut_msb.sch` | Fig. 2(b) | — |
 | `dut_pam4.sch` | Fig. 1 | top view with amp-block symbols; presentation sheet |
 | `dut_pam4_flat.sch` | — | the flat, connectivity-true sheet |
 

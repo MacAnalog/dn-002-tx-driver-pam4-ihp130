@@ -11,7 +11,7 @@ through `spicexplorer-optimize`, `sim_engine: layout`).
 
 **The layout of record is `gen_layout.FINAL_LAYOUT`** — the co-design round-3 best-score point
 `r3_s12/run_26`, report tier (f). `V2_LAYOUT`, `V3_LAYOUT` and `V4_LAYOUT` are the earlier points;
-`R4_LAYOUT` is the round-4 reviewer-response point (tier (g)). None of them is the record: owner
+`R4_LAYOUT` is the round-4 reviewer-response point (tier (g)). None of those four is the record: owner
 ruling 2026-09-02 keeps the paper's round-3 column (`layout/gen_layout.py`, above `R4_LAYOUT`).
 
 ## Read this before that
@@ -27,7 +27,7 @@ ruling 2026-09-02 keeps the paper's round-3 column (`layout/gen_layout.py`, abov
 ## Simulation lanes and reuse (contract for every agent in this repo)
 
 - **Open-source PDK (IHP SG13G2, sky130, gf180 …) → the open lane.** ngspice (with OSDI/openvaf models) through
-  this repo's lane module — here `testbenches/driver_lib.py`, which builds and runs every deck — plus
+  this repo's lane module — here `testbenches/driver_lib.py` — plus
   KLayout / magic / netgen / kpex for layout and sign-off and xschem for schematics, natively on the
   workstation; `make doctor` proves the lane. An open-PDK bench is never routed through the commercial tools.
 - **Commercial PDK under NDA → the remote lane only.** Those simulations run on the lab's licensed-tool

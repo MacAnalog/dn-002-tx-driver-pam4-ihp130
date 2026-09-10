@@ -1,0 +1,137 @@
+"""verification/verify.py must fail loudly when it verifies nothing.
+
+The three holes these tests pin down (all of them make a broken run look like a
+clean one, which is the worst failure mode a verification script has):
+
+1. the return code of every `ngspice -b` was printed and then dropped — and the
+   deck CSVs are TRACKED files, so a run in which every deck failed re-scores the
+   previous run's numbers and reports "all reproduce";
+2. `if key in got and key in exp` skipped a number that the run failed to
+   produce, so a measurement that vanished was not a FAIL, it was nothing;
+3. `SystemExit(0 if n_ok == n else 1)` exits 0 when n == 0 — "0/0 numbers
+   reproduce" is a green run that verified nothing.
+
+No simulator, no PDK: `ngspice` is a stub script on PATH.
+"""
+import json
+import os
+import shutil
+import sys
+
+import pytest
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+VERIFICATION = os.path.join(ROOT, "verification")
+sys.path.insert(0, VERIFICATION)
+
+# the numbers step_sim compares, in the order it compares them
+CHECKED = ("lsb_gain", "msb_gain", "weight", "bw_lsb", "bw_msb", "bw", "s11_lsb", "s11_msb", "s11",
+           "s11_edge_ghz", "s22", "s22_edge_ghz", "pn_gain_imb_db", "pn_phase_imb_deg", "cm_leak_dbc",
+           "cm_dm_db", "swing", "power", "ic_ma_per_finger")
+
+
+@pytest.fixture()
+def verify(monkeypatch):
+    import verify as v
+
+    monkeypatch.setattr(v, "RESULTS", [])
+    return v
+
+
+def _stub_ngspice(tmp_path, monkeypatch, rc):
+    """put an `ngspice` on PATH that does nothing and exits with `rc`"""
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    exe = bindir / "ngspice"
+    exe.write_text(f"#!/bin/sh\nexit {rc}\n")
+    exe.chmod(0o755)
+    monkeypatch.setenv("PATH", str(bindir) + os.pathsep + os.environ.get("PATH", ""))
+    monkeypatch.setenv("PDK_ROOT", str(tmp_path / "pdk"))
+
+
+def _deck_dir(tmp_path, monkeypatch, verify, tier="a", with_csvs=False):
+    d = tmp_path / "decks" / tier
+    d.mkdir(parents=True)
+    if with_csvs:                       # the previous run's output, as a fresh clone has it
+        for f in os.listdir(os.path.join(VERIFICATION, "decks", tier)):
+            if (f.endswith(".csv") and not f.startswith("eye")) or f == "meta.json":
+                shutil.copy(os.path.join(VERIFICATION, "decks", tier, f), d / f)
+    monkeypatch.setattr(verify, "DECKS", str(tmp_path / "decks"))
+    return d
+
+
+def test_failed_deck_cannot_report_all_pass(tmp_path, monkeypatch, verify):
+    """every deck fails to run, the CSVs on disk are the previous run's -> must NOT be all-pass"""
+    _stub_ngspice(tmp_path, monkeypatch, rc=1)
+    _deck_dir(tmp_path, monkeypatch, verify, with_csvs=True)
+
+    verify.step_sim("a", no_eye=True)
+
+    assert verify.RESULTS, "a run of ten failing decks recorded no result at all"
+    assert any(not r[5] for r in verify.RESULTS), (
+        "every ngspice run failed but every check passed (stale CSVs were re-scored)")
+
+
+def test_missing_number_is_a_failure(tmp_path, monkeypatch, verify):
+    """a number the run did not produce must be a FAIL, not a silent skip"""
+    _stub_ngspice(tmp_path, monkeypatch, rc=0)
+    _deck_dir(tmp_path, monkeypatch, verify)
+    exp = verify.EXPECTED["tiers"]["a"]
+    got = {k: exp[k] for k in CHECKED if k in exp and k != "msb_gain"}   # msb_gain went missing
+    monkeypatch.setattr(verify.extract, "extract", lambda *a, **k: dict(got))
+
+    verify.step_sim("a", no_eye=True)
+
+    rows = {r[1]: r for r in verify.RESULTS}
+    assert "msb_gain" in rows, "an expected number absent from the run produced no line at all"
+    assert not rows["msb_gain"][5], "a number the run never produced was reported as reproducing"
+
+
+def test_eye_numbers_are_not_scored_when_the_eye_deck_is_skipped(tmp_path, monkeypatch, verify):
+    """--no-eye skips the eye decks, so the eye CSV on disk belongs to the PREVIOUS run:
+    extraction still yields eye numbers, and reporting them as reproduced is a false claim"""
+    _stub_ngspice(tmp_path, monkeypatch, rc=0)
+    _deck_dir(tmp_path, monkeypatch, verify)
+    exp = verify.EXPECTED["tiers"]["a"]
+    got = {k: exp[k] for k in CHECKED if k in exp}
+    got.update({k: exp[k] for k in ("eye_rlm", "eye_min_v", "eye_vpp", "eye_openings_v")})   # stale eye.csv
+    monkeypatch.setattr(verify.extract, "extract", lambda *a, **k: dict(got))
+
+    verify.step_sim("a", no_eye=True)
+
+    assert not [r for r in verify.RESULTS if r[1].startswith("eye")], \
+        "--no-eye reported eye numbers that this run never simulated"
+
+
+def test_zero_checks_exits_non_zero(tmp_path, monkeypatch, verify):
+    """tier a has no layout/regen step: no check runs, and that is not a pass"""
+    monkeypatch.setattr(verify, "HERE", str(tmp_path))            # last_run.json
+    monkeypatch.setattr(sys, "argv", ["verify.py", "--tier", "a", "--step", "layout,regen"])
+
+    with pytest.raises(SystemExit) as e:
+        verify.main()
+
+    assert e.value.code not in (0, None), "0/0 numbers reproduce exited 0"
+
+
+def test_unknown_step_exits_non_zero(tmp_path, monkeypatch, verify):
+    """a mistyped --step silently ran nothing and exited 0"""
+    monkeypatch.setattr(verify, "HERE", str(tmp_path))
+    monkeypatch.setattr(sys, "argv", ["verify.py", "--tier", "a", "--step", "nostep"])
+
+    with pytest.raises(SystemExit) as e:
+        verify.main()
+
+    assert e.value.code not in (0, None), "an unknown --step verified nothing and exited 0"
+
+
+def test_last_run_json_is_written_even_when_nothing_ran(tmp_path, monkeypatch, verify):
+    """the record of a run must exist whatever the verdict"""
+    monkeypatch.setattr(verify, "HERE", str(tmp_path))
+    monkeypatch.setattr(sys, "argv", ["verify.py", "--tier", "a", "--step", "layout,regen"])
+
+    with pytest.raises(SystemExit):
+        verify.main()
+
+    assert json.load(open(tmp_path / "last_run.json")) == []

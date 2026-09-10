@@ -10,7 +10,12 @@ the shipped GDS. Two ways to do it:
   eye, ~30 min on its own — `--no-eye` skips all eyes); `--tier f`, `--step sim|layout|regen`,
   `--no-eye`): runs every deck, extracts every number, prints PASS/FAIL against
   `expected.json` (the values on record, frozen from `report/data/metrics.json`),
-  and exits non-zero on any miss. Last run on the research server:
+  and exits non-zero on any miss — on a number out of tolerance, on a deck ngspice
+  failed to run, on a number of the record the run did not produce (`MISSING`), and
+  (exit 2) on a selection that verifies nothing at all. The deck `.csv` files are
+  committed, so a deck that does not re-run leaves the *previous* run's numbers on
+  disk: that is why a failed deck fails the run instead of being noted in passing.
+  Last run on the research server:
   **all checks pass** — every number of the record for all five tiers, plus the independent-method
   cross-checks (legacy `.ac` algebra vs the `sp` decks, see below and `last_run.json`).
 * **manual** — the recipe below, one deck at a time, then `extract.py` prints
@@ -145,6 +150,6 @@ verification/
   expected.json    the values on record (frozen report/data/metrics.json) + tolerances + units
   last_run.json    result of the last verify.py run
   decks/<tier>/    ac_lsb, ac_msb, s22, balance, dc, bias, eye .spice (+ ac_msb_alg, s22_alg, balance_alg legacy-algebra twins);
-                   .spiceinit; meta.json  (CSV/log outputs git-ignored)
+                   .spiceinit; meta.json  (the .csv outputs of the last run are committed too, the .log files are not)
   work/            DRC/LVS/regen scratch (git-ignored)
 ```

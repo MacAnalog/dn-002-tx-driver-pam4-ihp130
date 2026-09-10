@@ -23,6 +23,13 @@ regen : gen_layout.generate(LayoutParams(**layout_params.json)) -> XOR against t
 Tolerances (verification/expected.json "tol"): the ngspice results are
 deterministic on one machine; across ngspice builds/CPUs expect differences at
 the last printed digit — the tolerances are set at about that level.
+
+Exit codes — a run that did not verify something never exits 0:
+    0  every check ran and passed
+    1  at least one check failed: a number out of tolerance, a deck ngspice did
+       not run (its .csv on disk is the PREVIOUS run's and must not be scored as
+       this one's), or a number on record the run did not produce (MISSING)
+    2  the selection verified nothing at all (0 checks) — not a pass
 """
 from __future__ import annotations
 
@@ -43,14 +50,25 @@ DECKS = os.path.join(HERE, "decks")
 EXPECTED = json.load(open(os.path.join(HERE, "expected.json")))
 TOL = EXPECTED["tol"]
 ORDER = ["ac_lsb", "ac_msb", "s22", "balance", "dc", "bias", "ac_msb_alg", "s22_alg", "balance_alg", "cmdm_alg", "eye"]
+STEPS = ("sim", "layout", "regen")
+# The numbers of the record. Every one of these that expected.json carries for a tier must come out
+# of that tier's run: absent is a FAIL, not a skip. The deck CSVs are tracked files, so "absent" and
+# "the previous run's value" are the two ways a run that simulated nothing can look clean.
+SIM_KEYS = ("lsb_gain", "msb_gain", "weight", "bw_lsb", "bw_msb", "bw", "s11_lsb", "s11_msb", "s11",
+            "s11_edge_ghz", "s22", "s22_edge_ghz", "pn_gain_imb_db", "pn_phase_imb_deg", "cm_leak_dbc",
+            "cm_dm_db", "swing", "power", "ic_ma_per_finger", "eye_rlm", "eye_min_v", "eye_vpp",
+            "eye_fs_min_v", "eye_fs_min_width_ps", "eye_fs_rlm")
 
+MISSING = "MISSING"          # sentinel: the run produced no value for a number that is on record
 RESULTS: list[tuple[str, str, str, object, object, bool]] = []   # tier, key, unit, got, exp, ok
 
 
 def check(tier: str, key: str, got, exp, tol=None, unit=""):
     if exp is None:
         return
-    if isinstance(exp, (list, tuple)):
+    if got is MISSING:                 # on record, not produced by this run -> FAIL, whatever exp is
+        ok = False
+    elif isinstance(exp, (list, tuple)):
         ok = all(abs(g - e) <= (tol or 0) for g, e in zip(got, exp)) and len(got) == len(exp)
     elif isinstance(exp, bool) or tol is None:
         ok = got == exp
@@ -89,13 +107,24 @@ def step_sim(tier: str, no_eye: bool) -> None:
         t0 = time.time()
         ok = run_ngspice(d, name + ".spice", timeout=3600)
         print(f"   ngspice -b {name}.spice  -> {'ok' if ok else 'FAILED'} ({time.time() - t0:.0f} s)")
+        # A deck that did not run is a failure of the run, not a note: its CSV is still on disk from
+        # the previous run (the CSVs are tracked), so extraction below would happily re-score
+        # yesterday's numbers and report that everything reproduces. Record the deck as a check.
+        check(tier, f"ngspice {name}", "ok" if ok else "FAILED", "ok")
     got = extract.extract(tier, d, verbose=False)
     exp = EXPECTED["tiers"][tier]
-    for key in ("lsb_gain", "msb_gain", "weight", "bw_lsb", "bw_msb", "bw", "s11_lsb", "s11_msb", "s11", "s11_edge_ghz",
-                "s22", "s22_edge_ghz", "pn_gain_imb_db", "pn_phase_imb_deg", "cm_leak_dbc", "cm_dm_db", "swing", "power",
-                "ic_ma_per_finger", "eye_rlm", "eye_min_v", "eye_vpp", "eye_fs_min_v", "eye_fs_min_width_ps", "eye_fs_rlm"):
-        if key in got and key in exp:
+    for key in SIM_KEYS:
+        if key not in exp:
+            continue                  # the tier does not carry this number (e.g. eye_fs outside tier f)
+        # --no-eye: the deck was deliberately not run, so neither demand the number nor score the
+        # CSV the LAST run left on disk as if this run had produced it
+        if no_eye and key.startswith("eye"):
+            continue
+        if key in got:
             check(tier, key, got[key], exp[key], TOL.get(key, TOL["default"]), EXPECTED["units"].get(key, ""))
+        else:
+            # on record but not produced by this run: a missing measurement is a FAIL, never a skip
+            check(tier, key, MISSING, exp[key], None, EXPECTED["units"].get(key, ""))
     # independent method (legacy .ac algebra) must agree with the primary `sp` decks
     for a_, b_, tol_, unit in (("alg_msb_gain", "msb_gain", 0.01, "dB"), ("alg_bw_msb", "bw_msb", 0.05, "GHz"),
                                ("alg_s11_msb", "s11_msb", 0.01, "dB"), ("alg_s11_edge_msb", "s11_edge_ghz", 0.05, "GHz"),
@@ -108,8 +137,11 @@ def step_sim(tier: str, no_eye: bool) -> None:
             continue          # ideal-symmetry noise floor: both methods read < -150, exact value is numerical
         if a_ in got and b_ in got and (b_ != "s11_edge_ghz" or got["s11_msb"] >= got.get("s11_lsb", -1e9)):
             check(tier, f"{a_} == {b_}", got[a_], got[b_], tol_, unit + "  (legacy .ac algebra vs ngspice sp)")
-    if "eye_openings_v" in got and "eye_openings_v" in exp:
-        check(tier, "eye_openings_v", got["eye_openings_v"], exp["eye_openings_v"], TOL["eye_min_v"], "V")
+    if "eye_openings_v" in exp and not no_eye:
+        if "eye_openings_v" in got:
+            check(tier, "eye_openings_v", got["eye_openings_v"], exp["eye_openings_v"], TOL["eye_min_v"], "V")
+        else:
+            check(tier, "eye_openings_v", MISSING, exp["eye_openings_v"], None, "V")
 
 
 def step_layout(tier: str) -> None:
@@ -178,7 +210,10 @@ def main() -> None:
     ap.add_argument("--step", default="sim,layout,regen", help="comma list of sim,layout,regen")
     ap.add_argument("--no-eye", action="store_true")
     a = ap.parse_args()
-    steps = a.step.split(",")
+    steps = [s.strip() for s in a.step.split(",") if s.strip()]
+    bad = [s for s in steps if s not in STEPS]
+    if bad or not steps:              # a mistyped step used to run nothing and exit 0
+        raise SystemExit(f"--step: {', '.join(bad) or 'empty'} — choose from {', '.join(STEPS)}")
     for tier in a.tier.split(","):
         print(f"== tier {tier}: {EXPECTED['tiers'][tier]['tier']}")
         if "sim" in steps:
@@ -194,6 +229,11 @@ def main() -> None:
             print(f"   {t} {k}: got {g} expected {e}")
     json.dump([dict(tier=t, key=k, got=g, expected=e, ok=ok) for t, k, u, g, e, ok in RESULTS],
               open(os.path.join(HERE, "last_run.json"), "w"), indent=1, default=float)
+    if n == 0:
+        # "0/0 numbers reproduce" is not a pass: this run verified nothing (every step was a no-op
+        # for every tier requested — e.g. only --step layout on tier a, which has no layout).
+        print("   nothing was verified — this is a failure, not a pass")
+        raise SystemExit(2)
     raise SystemExit(0 if n_ok == n else 1)
 
 

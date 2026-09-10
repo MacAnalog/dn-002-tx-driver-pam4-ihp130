@@ -24,6 +24,8 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 S11_BAND_GHZ, S22_BAND_GHZ, BAL_BAND_GHZ = 32.0, 50.0, 48.0
+TIERS = ("a", "b", "c", "d", "f")     # every tier of the record (== expected.json "tiers"); f is the
+                                      # layout of record and has decks of its own, so the CLI takes it
 
 
 # ---------------------------------------------------------------- definitions (== measure_post.py)
@@ -243,7 +245,7 @@ def extract(tier: str, deck_dir: str | None = None, verbose: bool = True, skip=(
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("tier", choices=list("abcd"))
+    ap.add_argument("tier", choices=list(TIERS))
     ap.add_argument("--dir", help="deck directory (default verification/decks/<tier>)")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()

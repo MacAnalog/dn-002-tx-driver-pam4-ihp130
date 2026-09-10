@@ -150,6 +150,22 @@ def test_eye_levels_of_the_record_are_checked(tmp_path, monkeypatch, verify):
     assert rows["eye_levels_v"][5], f"eye_levels_v did not reproduce: {rows['eye_levels_v']}"
 
 
+def test_extract_cli_takes_every_tier_of_the_record(monkeypatch, verify, capsys):
+    """extract.py's tier choices were hard-coded "abcd", so the CLI rejected tier f —
+    the layout of record, which has decks of its own and is what the README tells a
+    reviewer to run by hand."""
+    import extract
+
+    for tier in verify.EXPECTED["tiers"]:
+        monkeypatch.setattr(sys, "argv",
+                            ["extract.py", tier, "--json", "--dir", os.path.join(VERIFICATION, "decks", tier)])
+        try:
+            extract.main()
+        except SystemExit as e:                      # argparse: exit 2 with "invalid choice"
+            pytest.fail(f"extract.py rejects tier {tier}, which is on record: {e}")
+        capsys.readouterr()
+
+
 def test_coverage_manifest_accounts_for_every_key_of_the_record(tmp_path, monkeypatch, verify):
     """forward guard: a key added to expected.json must be checked by a step or listed as
     unverified — it may not become a number of the record that nothing looks at."""

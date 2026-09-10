@@ -65,7 +65,7 @@ ngspice -b balance.spice     # -> balance.csv  (|Vp|,|Vn| dB, phases, |Vp+Vn|, |
 ngspice -b dc.spice          # -> dc.csv       (Vout,diff vs source EMF, both ports, ±0.9 V)
 ngspice -b bias.spice        # -> bias.csv     (ramp-and-hold transient: v(outp), i(Vcc))
 ngspice -b eye.spice         # -> eye.csv      (48 GBd PAM-4, 200 symbols, ~25 s post-layout)
-python ../../extract.py d    # every number, with its formula, from the CSVs present
+python ../../extract.py <tier>   # every number, with its formula, from the CSVs present
 ```
 
 The `.spiceinit` in each deck directory is mandatory (`ngbehavior=hsa` — without
@@ -92,7 +92,7 @@ through 2×50 Ω, `zin = vdiff·100/(1−vdiff)`, `S = (z−100)/(z+100)`,
 
 ```sh
 ngspice -b ac_msb_alg.spice   ; ngspice -b s22_alg.spice   ; ngspice -b balance_alg.spice
-python ../../extract.py d     # prints the [alg] lines next to the sp numbers
+python ../../extract.py <tier>    # prints the [alg] lines next to the sp numbers
 ```
 
 `verify.py` requires the two methods to agree to 0.01 dB / 0.05 GHz on gain,

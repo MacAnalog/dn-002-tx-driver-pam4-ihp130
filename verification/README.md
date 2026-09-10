@@ -11,13 +11,26 @@ the shipped GDS. Two ways to do it:
   `--no-eye`): runs every deck, extracts every number, prints PASS/FAIL against
   `expected.json` (the values on record, frozen from `report/data/metrics.json`),
   and exits non-zero on any miss — on a number out of tolerance, on a deck ngspice
-  failed to run, on a number of the record the run did not produce (`MISSING`), and
-  (exit 2) on a selection that verifies nothing at all. The deck `.csv` files are
-  committed, so a deck that does not re-run leaves the *previous* run's numbers on
-  disk: that is why a failed deck fails the run instead of being noted in passing.
-  Last run on the research server:
-  **all checks pass** — every number of the record for all five tiers, plus the independent-method
-  cross-checks (legacy `.ac` algebra vs the `sp` decks, see below and `last_run.json`).
+  failed to run, on a number of the record the run did not produce (`MISSING`), on a
+  number whose deck failed so the `.csv` on disk is the last run's (`STALE`), and
+  (exit 2) on a selection that verifies nothing at all. The deck `.csv` files of
+  tiers a–d are committed, so a deck that does not re-run leaves the *previous*
+  run's numbers on disk: that is why a failed deck fails the run *and* why every
+  number derived from it is reported `STALE` instead of compared. Numbers of the
+  record that no step reproduces are listed in `verify.py` as `UNVERIFIED_KEYS`
+  (today: `c_outp_gnd_ff`, `c_outn_gnd_ff`) — `verify.py` passing does not mean
+  those were re-derived.
+  The committed `last_run.json` is a **stale record**: it was written at the
+  "Reviewer Delivery Package" commit, before tier f and before the current checker.
+  It holds 159 rows for tiers a–d only (no tier f), one of them a failure
+  (`a alg_cm_dm_db == cm_dm_db`, −280.02 vs −282.68) that the present code does not
+  even produce — the ideal-symmetry noise floor below −150 dB is now excluded from
+  that cross-check. Re-run `make verify-report` for a current record. What *was*
+  re-run as of this commit (workstation, ngspice-45 + IHP-Open-PDK, decks only):
+  `--tier a,b,c,d --step sim` → **178/178**, exit 0 (15 s), and `--tier f --step
+  sim --no-eye` → **39/39**, exit 0 — tier f carries no committed CSVs, so those
+  39 numbers came entirely from that live run. Not re-run here: the tier-f eyes
+  and the `layout` / `regen` steps.
 * **manual** — the recipe below, one deck at a time, then `extract.py` prints
   each number next to its definition. Only numpy is needed for the extraction.
 
@@ -148,8 +161,14 @@ verification/
   extract.py       CSVs -> numbers (formulas inline; numpy only)
   verify.py        automatic: ngspice on every deck + extract + compare with expected.json; DRC/LVS/area; regen XOR
   expected.json    the values on record (frozen report/data/metrics.json) + tolerances + units
-  last_run.json    result of the last verify.py run
+  last_run.json    result of the last verify.py run (currently a stale record — see above)
   decks/<tier>/    ac_lsb, ac_msb, s22, balance, dc, bias, eye .spice (+ ac_msb_alg, s22_alg, balance_alg legacy-algebra twins);
-                   .spiceinit; meta.json  (the .csv outputs of the last run are committed too, the .log files are not)
+                   .spiceinit; meta.json
   work/            DRC/LVS/regen scratch (git-ignored)
 ```
+
+`.gitignore` ignores `verification/decks/*/*.csv`; the seven primary CSVs of each
+of the tiers a–d (28 files) are nevertheless committed, force-added, so a reviewer
+can run `extract.py` without a simulator. Not committed: **every tier-f CSV** (that
+tier reproduces only by running its decks, including the ~30 min full-swing eye),
+the `*_alg` twins' CSVs, and the `.log` files.

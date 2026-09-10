@@ -5,32 +5,40 @@ modulator driver — a block-level replication of *Inac et al., "Inductorless
 96 Gb/s PAM-4 Optical Modulators Driver in SiGe:C BiCMOS," EuMIC 2022* on
 the open IHP SG13G2 PDK — taken from netlist to DRC/LVS-clean parameterized
 layout, kpex extraction, and a layout + electrical co-optimization that
-closes **all eight post-layout specs** — first with a block-local optimizer
-(v2), then by running the paper's **layout/schematic co-design algorithm
-through the SpiceXplorer platform** (`spicexplorer-optimize`,
-`sim_engine: layout`; three rounds — **v4** is the layout of record). The audit
-trail is four notebooks plus a self-contained **reviewer report** ([`report/`](report/README.md):
-schematic vs v1 / v2 / v3 / v4 layouts through the same benches, DRC/LVS/PEX
-evidence, GDS + netlists, KLayout renders, eyes, tables — `make report`);
-every result below reproduces from this repo — and every number in the
-final table can be re-run by hand from static ngspice decks:
-[`verification/`](verification/README.md) (`make verify-report`).
+closes **all eight post-layout specs**.
 
-## The layout journey
+- **Two optimization stages.** A block-local optimizer produced v2; the
+  paper's **layout/schematic co-design algorithm** then ran **through the
+  SpiceXplorer platform** (`spicexplorer-optimize`, `sim_engine: layout`).
+- **The layout of record is `gen_layout.FINAL_LAYOUT`** — the co-design
+  round-3 best-score point `r3_s12/run_26`, report tier (f).
+- **Audit trail:** four notebooks plus a self-contained **reviewer report**
+  ([`report/`](report/README.md)) — schematic versus every layout tier
+  through the same benches, DRC/LVS/PEX evidence, GDS + netlists, KLayout
+  renders, eyes, tables (`make report`).
+- **Every result below reproduces from this repo**, and every number in the
+  final table re-runs by hand from static ngspice decks:
+  [`verification/`](verification/README.md) (`make verify-report`).
+
+## Layout history: v1 → v2 → v3 → v4 → the record → round 4
 
 Original v1 layout (edge-fed input, 1.8 µm output-bus gap, nx=2 / R_C=70 Ω
-electrical point) → the co-designed layout of record (v4):
+electrical point) → the co-designed v4 layout:
 
-![before/after layout: original v1 vs the co-designed layout of record](layout/before_after.png)
+![before/after layout: original v1 vs the co-designed v4 layout](layout/before_after.png)
 
-The first optimization pass scored only S11/BW/gain/power — and its winner
-(nx=2, R_C=70 Ω) sailed through those while silently **failing S22
-(−8.3 dB) and output swing (2.07 Vpp)**, caught by the full signoff
-(notebook 03). An expert RF layout review + a directed probe ladder
-produced the v2 fix (`layout/before_after_v2.png` shows v1 → v2), and the
-punchline: **once the layout was repaired, the electrical optimum returned to
-the paper's nominal topology** (nx=3, R_C=50 Ω) — the odd v1 sizing had been
-compensating layout parasitics.
+### v1 → v2 — what the first pass missed, and what fixed it
+
+The first optimization pass scored only S11/BW/gain/power. Its winner
+(nx=2, R_C=70 Ω) met those four and **failed S22 (−8.3 dB) and output swing
+(2.07 Vpp)**; neither was in the objective, and the full signoff in notebook
+03 caught them. An expert RF layout review plus a
+directed probe ladder produced the v2 fix (`layout/before_after_v2.png`
+shows v1 → v2).
+
+**Once the layout was repaired, the electrical optimum returned to the
+paper's nominal topology** (nx=3, R_C=50 Ω): the nx=2 / R_C=70 Ω sizing had
+been compensating layout parasitics.
 
 | step | what was learned / changed | effect |
 |---|---|---|
@@ -45,62 +53,122 @@ compensating layout parasitics.
 
 Running the same loop *through* `spicexplorer-optimize` (Algorithm 1 of the
 TCAS paper: agent owns the generator + bounds, platform owns the search,
-DRC/LVS as gates; `layout/codesign/`) first fixed the **instrument** — the
-v2 "−10.03 / −10.14" were the worst points of a `dec 20` grid that never
-samples 32 / 50 GHz; at the band edges v2 reads **−9.94 / −9.24 dB and
-fails both reflection specs** — and the extractor's 8 µm sidewall halo
-(`out_gap` sat on it; now `pex.halo_um: 20`). Round 1 (120 trials) skipped
-47 % of its budget on generator DRC bugs → three guards; round 2 turned the
-layout review into five **structural INT knobs** (`bus_trim`, `sub_bus`,
-`cell_order`, `c_strip`, `out_split`) and found the accepted point:
+DRC/LVS as gates; `layout/codesign/`) first fixed **the instrument**:
+
+- **The frequency grid missed both spec points.** The v2 "−10.03 / −10.14"
+  were the worst points of a `dec 20` grid that never samples 32 / 50 GHz;
+  at the band edges v2 reads **−9.94 / −9.24 dB and fails both reflection
+  specs**.
+- **The extraction halo sat on the geometry being tuned.** `out_gap` sat on
+  the extractor's 8 µm sidewall halo; the search now runs at
+  `pex.halo_um: 20`.
+
+Then two rounds:
+
+- **Round 1** (120 trials) skipped 47 % of its budget on generator DRC bugs
+  → three guards.
+- **Round 2** turned the layout review into five **structural INT knobs**
+  (`bus_trim`, `sub_bus`, `cell_order`, `c_strip`, `out_split`) and found the
+  accepted point:
 
 ![before/after co-design](layout/codesign/before_after.png)
 
-| | v2 (record) | **v3 accepted** |
+| quantity | v2 (the record at the time) | **v3 accepted** |
 |---|---|---|
-| S11 @32 GHz / S22 @50 GHz | −9.94 / −9.24 dB ✗✗ | **−10.05 / −10.72 dB** ✅✅ (halo 20: −10.07 / −10.78) |
-| gain LSB / MSB, BW, swing, power | 2.27 / 8.25 dB, 58.8 GHz, 2.21 Vpp, 179 mW | 2.23 / 8.21 dB, 61.1 GHz, 2.26 Vpp, 190 mW |
-| core area | 7552 µm² | **6880 µm²** (−9 %; −39 % vs the paper's 11 300) |
+| S11 @ 32 GHz (dB) | −9.94 ✗ | **−10.05** ✅ (halo 20: −10.07) |
+| S22 @ 50 GHz (dB) | −9.24 ✗ | **−10.72** ✅ (halo 20: −10.78) |
+| gain LSB / MSB (dB) | 2.27 / 8.25 | 2.23 / 8.21 |
+| bandwidth (GHz) | 58.8 | 61.1 |
+| max diff swing (Vpp) | 2.21 | 2.26 |
+| power (mW) | 179 | 190 |
+| core area (µm²) | 7552 | **6880** (−9 % vs v2; −39 % vs the paper's 11 300) |
 
 ### v4 — co-design round 3: p/n balance as an objective (2026-08-18)
 
-The r2 review's open item was **matching**: the accepted v3 floorplan is
-asymmetric by construction (one output bus on TopMetal2, per-net bus trimming)
-and its p/n balance had degraded (0.053 dB / 1.18° / −39.4 dBc against v2's
-0.03 / 0.5° / −46.5). Round 3 measured the balance of *both* DAC paths in the
-hook, made it a **reward** in `J` (with power), and added the knobs the
-extraction pointed at — the symmetric/mirrored `out_split` variants, a
-p/n-swapped input row order, and `rc_gap` (the outn bus ↔ TopMetal2 vcc rail,
-2.34 fF against outp's 0.26). 520 trials over 14 islands:
+**The r2 review's open item was matching.** The accepted v3 floorplan is
+asymmetric by construction (one output bus on TopMetal2, per-net bus
+trimming) and its p/n balance had degraded to 0.053 dB / 1.18° / −39.4 dBc
+against v2's 0.03 / 0.5° / −46.5 (halo 8, the report instrument).
 
-| | v3 | **v4 accepted** |
+Round 3 measured the balance of *both* DAC paths in the hook and made it a
+**reward** in `J` (with power), then added the knobs the extraction pointed
+at:
+
+- **`out_split` symmetric and mirrored variants** — the metal symmetry the
+  review asked for.
+- **A p/n-swapped input row order.**
+- **`rc_gap`** — the outn bus ↔ TopMetal2 vcc rail, 2.34 fF against outp's
+  0.26.
+
+520 trials over 14 islands:
+
+| quantity (halo 20 CC, the search instrument) | v3 | **v4 accepted** |
 |---|---|---|
-| S11 @32 GHz / S22 @50 GHz (halo 20 CC) | −10.070 / −10.790 dB | **−10.073 / −10.812 dB** |
-| p/n \|gain\| / phase / diff→CM ≤ 48 GHz | 0.043 dB / 0.88° / −41.9 dBc | **0.035 dB / 0.64° / −44.5 dBc** |
-| gain LSB / MSB, BW, swing, power | 2.232 / 8.205 dB, 61.2 GHz, 2.26 Vpp, 190.2 mW | 2.269 / 8.244 dB, 61.4 GHz, 2.24 Vpp, **185.0 mW** |
-| core area | 6880 µm² | 7055 µm² (+2.5 %; −38 % vs the paper's 11 300) |
+| S11 @ 32 GHz (dB) | −10.070 | **−10.073** |
+| S22 @ 50 GHz (dB) | −10.790 | **−10.812** |
+| p/n \|gain\| imbalance ≤ 48 GHz (dB) | 0.043 | **0.035** |
+| p/n phase imbalance ≤ 48 GHz (°) | 0.88 | **0.64** |
+| diff→CM ≤ 48 GHz (dBc) | −41.9 | **−44.5** |
+| gain LSB / MSB (dB) | 2.232 / 8.205 | 2.269 / 8.244 |
+| bandwidth (GHz) | 61.2 | 61.4 |
+| max diff swing (Vpp) | 2.26 | 2.24 |
+| power (mW) | 190.2 | **185.0** |
+| core area (µm²) | 6880 | 7055 (+2.5 % vs v3; −38 % vs the paper's 11 300) |
 
-The *symmetric* metal options and the input-row swap were measured and are
-**nulls** — the balance came from the per-net C budget (output-net asymmetry
-2.01 → 1.46 fF) and the electrical point; and the round's ceiling is that
-every larger balance gain costs 0.1–0.5 dB of S22 (only 6 of 520 trials hold
-both reflections at the v3 level).
+Two results the round settled:
+
+- **The *symmetric* metal options and the input-row swap are nulls** — both
+  were measured. The balance came from the per-net C budget (output-net
+  asymmetry 2.01 → 1.46 fF) and the electrical point.
+- **The round's ceiling is a balance/S22 trade**: every larger balance gain
+  costs 0.1–0.5 dB of S22, and only 6 of 520 trials hold both reflections at
+  the v3 level. *Missing figure: p/n balance against S22 over the 520 trials
+  with the v3 reflection level drawn as the bound — the data is
+  `layout/codesign/results/r3/trials.jsonl`, the plotting script
+  `notebooks/04_codesign_platform.py`.*
 
 Full story, rounds table, ceiling analysis and the annotated parameterized
 layout: [layout/codesign/README.md](layout/codesign/README.md); notebook 04.
 
 ### The layout of record — round 3 best-score point `r3_s12/run_26`
 
-v4 was the acceptance sub-box pick (both reflections held at the v3 level).
-The **TCAS paper presents round 3 by its best-score point instead** —
-`r3_s12/run_26` (score 11.52, the round's maximum) — and the repo record
-follows the paper: `gen_layout.FINAL_LAYOUT` is that point (v4 stays as
-`V4_LAYOUT`, tier (e) of the report). It is the low-tail corner of the round
-(tail 14.0 mA, R_C 51.8 Ω): **167 mW (−13 % vs the reference paper's 192)**
-and diff→CM −52.7 dBc, paid for in swing (2.11 vs 2.24 Vpp) and S22 margin
-(−10.28 vs −10.81 dB) — all eight specs still met at the report instrument.
+**`gen_layout.FINAL_LAYOUT` is the round-3 best-score point `r3_s12/run_26`**
+(score 11.52, the round's maximum). v4 was the acceptance sub-box pick, both
+reflections held at the v3 level; the **TCAS paper presents round 3 by its
+best-score point instead**, and the repo record follows the paper. v4 stays
+as `V4_LAYOUT`, tier (e) of the report.
 
-#### Where the co-optimization actually happens (the script to read)
+The record is the low-tail corner of the round (tail 14.0 mA, R_C 51.8 Ω).
+What that buys and what it costs, against v4:
+
+- **Power 167 mW** — −13 % vs the reference paper's 192 mW.
+- **diff→CM −52.7 dBc.**
+- **Swing 2.11 Vpp**, against v4's 2.24 Vpp.
+- **S22 margin −10.28 dB**, against v4's −10.71 dB at the same
+  instrument (`report/data/tables.md`, tiers (f) and (e)).
+
+All eight specs are still met at the report instrument.
+
+### Round 4 — reviewer-margin hinges (`R4_LAYOUT`, report tier (g))
+
+**The record does not move.** Round 4 kept the round-3 objective and turned
+the reviewer margins into feasibility hinges, adding two review-driven
+generator options (`vcc_trim`, `rb_off`). Its accepted point is `R4_LAYOUT` =
+`r4_s10/run_29` with `rb_off` and `in_bus_lvl` reverted to the record's
+values by the post-round review. Owner ruling 2026-09-02 keeps the paper's
+round-3 column as `gen_layout.FINAL_LAYOUT`; round 4 is reviewer-response
+evidence.
+
+- **The round's story and its numbers:**
+  [layout/codesign/README.md](layout/codesign/README.md) "Round 4", and
+  column (g) of `report/data/tables.md`.
+- **Post-layout verification of the round-4 point**, including the 36-corner
+  PVT sweep and the Monte-Carlo sets:
+  [layout/codesign/results/r4/verification.md](layout/codesign/results/r4/verification.md).
+- **Figures:** `layout/codesign/before_after_r4.png`,
+  `layout/codesign/pam4_layout_annotated_r4.png`, `report/figs/round4/`.
+
+### Where the co-optimization actually happens (the script to read)
 
 The agent-generated layout (`layout/gen_layout.py`, a gdsfactory generator
 whose `LayoutParams` are the knobs) and the schematic sizing were co-optimized
@@ -142,10 +210,13 @@ uv run --project ../../../../spicexplorer-platform spicexplorer-optimize \
     --outdir layout/codesign/runs/r2_s0
 ```
 
-Every trial leaves `runs/<round>_s<seed>/layout/layout/run_<n>_layout/{pam4drv_pam4_lay.gds, drc/, lvs/, pex/, measure.log, summary.json}`;
-`harvest.py` folds the islands into `results/<round>/{trials.jsonl,summary.json,best.*}` — the record R the agent reads
-(and notebook 04 plots). The agent's part of the loop is only the diff of `gen_layout.py` and the bounds between rounds
-(`rounds/r1_project_setup.yaml` → `project_setup.yaml`).
+- **Per trial:** `runs/<round>_s<seed>/layout/layout/run_<n>_layout/{pam4drv_pam4_lay.gds, drc/, lvs/, pex/, measure.log, summary.json}`.
+- **Per round:** `harvest.py` folds the islands into
+  `results/<round>/{trials.jsonl,summary.json,best.*}` — the record R the
+  agent reads and notebook 04 plots.
+- **The agent's part of the loop** is only the diff of `gen_layout.py` and
+  the bounds between rounds (`rounds/r1_project_setup.yaml` →
+  `project_setup.yaml`).
 
 Open pre-tapeout items from the review (vcasc bypass/stability, EM current
 density, ground cage, matching dummies) are tracked in
@@ -154,8 +225,10 @@ density, ground cage, matching dummies) are tracked in
 ## Results
 
 The paper's table (Sch. / Lay. / Round 2 / Round 3) is the report's tiers
-(a) / (b) / (d) / **(f)**; tiers (c) = v2 and (e) = v4 are the repo's extra
-history columns. Same instrument everywhere: kpex CC, tech-default halo 8.
+(a) / (b) / (d) / **(f)**, the four columns below. Tiers (c) = v2, (e) = v4
+and (g) = round 4 are the repo's extra history columns; all seven stand side
+by side in [`report/data/tables.md`](report/data/tables.md). Same instrument
+everywhere: kpex CC, tech-default halo 8.
 
 | metric (post-layout `pam4`, kpex 2.5D) | paper (meas.) | Sch. (a) | Lay. (b) | Round 2 = v3 (d) | **Round 3 = record (f)** | spec |
 |---|---|---|---|---|---|---|
@@ -172,22 +245,42 @@ history columns. Same instrument everywhere: kpex CC, tech-default halo 8.
 | 48 GBd full-swing eye (900 mV$_{pp}$ in, 10 000 sym) | — | — | — | — | **≥ 675 mV / 17.1 ps, RLM 0.996** | open ✅ |
 | Core area | 0.011 mm² | — | 0.0074 mm² | 0.0069 mm² | **0.0073 mm²** (97.3 × 74.7 µm) | — |
 
-S11/S22 are the worst in-band values *including the interpolated 32 / 50 GHz
-band edge* (kpex CC, tech halo 8 µm — the block's default instrument; the
-co-design search runs at halo 20, where the record reads −10.20 / −10.26 dB).
-CM→diff is the mixed-mode conversion gain A_cd = |Sdc21| from the same
-4-port S-matrix as the balance audit (worst value ≤ 50 GHz). Eye metrics are
-read at the eye centre (`report/build_report.py`; the notebooks sample at a
-fixed phase and read RLM ≈ 0.97); the full-swing row is the paper's eye
-figure (10 000 seed-7 symbols at 900 mVpp input). All six tiers —
-schematic, first-pass layout, v2, v3, v4, record — side by side with the same
-instrument, plus the balance audit and per-tier DRC/LVS/PEX evidence, are in
-[`report/`](report/README.md) (`report/data/tables.md`).
-Both columns through the same `driver_lib` benches (notebook 04 §5):
+**How to read the table:**
+
+- **S11 / S22** are the worst in-band values *including the interpolated
+  32 / 50 GHz band edge*, at kpex CC with the tech-default 8 µm halo — the
+  block's default instrument. The co-design search runs at halo 20, where the
+  record reads −10.20 / −10.26 dB.
+- **CM→diff** is the mixed-mode conversion gain A_cd = |Sdc21|, from the same
+  4-port S-matrix as the balance audit (worst value ≤ 50 GHz).
+- **Eye metrics** are read at the eye centre (`report/build_report.py`); the
+  notebooks instead sample at a fixed phase and read RLM ≈ 0.97.
+- **The full-swing row** is the paper's eye figure: 10 000 seed-7 symbols at
+  900 mVpp input.
+- **All tiers side by side**, with the balance audit and per-tier DRC/LVS/PEX
+  evidence, are in [`report/`](report/README.md): `report/data/tables.md`
+  carries the seven tiers (a)–(g) at the same instrument, the plots in
+  `report/figs/` cover (a)–(f) and those in `report/figs/round4/` the rebuild
+  including (g).
+- **Not in this table: corners and mismatch.** Every column is the typical
+  corner (tt, 4.0 V, 27 C). The record and the round-4 point each carry a
+  36-corner PVT sweep (3 process × 3 VCC × 4 temperature, all 36 converged)
+  and Monte-Carlo sets at the same halo-8 instrument, reported in
+  [`layout/codesign/results/r4/verification.md`](layout/codesign/results/r4/verification.md)
+  (`pvt.json`, `fig_pvt_r4.png`); that harness runs on the research server and
+  is not in this repo. *Missing here: a worst-corner-per-spec table, one row
+  per spec with the binding corner named.*
+
+**48 GBd eyes, all tiers:**
 
 ![48 GBd eyes, all tiers](report/figs/fig_eye.png)
 
+**First-pass (b) vs the record (f), KLayout render:**
+
 ![first-pass vs co-designed layout, KLayout render](report/figs/fig_layout_b_vs_d.png)
+
+**v2 vs v4 S-parameters** — both columns through the same `driver_lib`
+benches (notebook 04 §5):
 
 ![v2 vs v4 S-parameters](notebooks/report_figs/sparams_v2_v4_post_layout.png)
 
@@ -209,13 +302,14 @@ every optimizer knob annotated):
 
 The notebook-03 signoff figures (`notebooks/report_figs/{pam4_layout_final,
 eye_48gbd_pam4,sparams_s21_s11_s22,dc_transfer_dac_levels}.png`) are the
-**v2** layout of record (they run on `layout/out/pex/dut_pam4_best_post.spice`);
-`report/` supersedes them for v3 / v4.
+**v2** layout of record; they run on
+`layout/out/pex/dut_pam4_best_post.spice`, and `report/` supersedes them for
+every later tier.
 
 The report plots regenerate with `make report`, the notebook plots from
-`notebooks/03_signoff.py`; the executed
-notebooks (`.ipynb` built locally from the paired `.py`, `make notebooks`)
-contain every table and figure inline:
+`notebooks/03_signoff.py`. The executed notebooks (`.ipynb` built locally
+from the paired `.py`, `make notebooks`) contain every table and figure
+inline:
 
 | notebook | contents |
 |---|---|
@@ -231,12 +325,15 @@ dut/          three DUT subcircuits (lsb / msb / pam4 2-bit DAC)
 netlists/     static, directly runnable ngspice decks (+ .spiceinit)
 testbenches/  driver_lib.py — netlist-agnostic benches (schematic AND
               post-layout via dut_ref=), run_verify.py, run_eye.py
-layout/       gen_layout.py (parameterized generator, FINAL_LAYOUT = v4,
-              V3_LAYOUT, V2_LAYOUT), signoff.py (DRC+LVS, vendored PDK runner),
+layout/       gen_layout.py (parameterized generator; FINAL_LAYOUT = the
+              record r3_s12/run_26, plus V2_/V3_/V4_/R4_LAYOUT),
+              signoff.py (DRC+LVS, vendored PDK runner),
               pex_sim.py (kpex), optimize_layout.py (block-local v1/v2 loop),
               LAYOUT_REVIEW.md, before_after.png (v1 -> v4; _v2/_v3 = v1 -> v2/v3),
               codesign/ (Alg. 1 through spicexplorer-optimize: flow.yaml,
               project_setup.yaml, measure hook, rounds/, results/, figures),
+              em/ (openEMS full-wave FDTD re-check of the record's output
+              network and its S22 — see layout/em/README.md),
               out/ (v3 netlists, PEX, renders; GDS regenerates)
 report/       reviewer report — build_report.py, README.md, figs/, data/
               (tables + raw sweeps), layout/<tier>/ (GDS + LVS/kpex/post
@@ -294,24 +391,30 @@ make report      # rebuild report/ (all tiers, DRC/LVS/PEX, benches, eyes)
 make verify-report  # re-run every final number from static decks + DRC/LVS, PASS/FAIL vs record
 ```
 
-`make all` runs everything (incl. notebooks 01/02; 02 is the
-layout-in-the-loop optimizer — takes a while, tune with `NB_BUDGET=n`).
-Any variable can also be set per-invocation, e.g.
-`make signoff PDK_ROOT=/opt/pdks`. The `.ipynb` notebooks are generated
-from the paired `.py` files and are not tracked.
-A raw one-off deck: `cd netlists && ngspice -b tb_pam4_sparam_msb_1ghz.spice`.
+- **`make all`** runs everything, notebooks 01 and 02 included.
+- **Notebook 02 is the layout-in-the-loop optimizer.** Each trial runs
+  gen_layout → DRC/LVS → kpex → ngspice, so its wall time scales with
+  `NB_BUDGET=n` (default 8, the budget the committed result used).
+- **Any variable can be set per invocation**, e.g.
+  `make signoff PDK_ROOT=/opt/pdks`.
+- **The `.ipynb` notebooks** are generated from the paired `.py` files and
+  are not tracked.
+- **A raw one-off deck:** `cd netlists && ngspice -b tb_pam4_sparam_msb_1ghz.spice`.
 
-Post-layout results reproduce **without kpex**: the converted PEX netlists
-are committed (`layout/out/pex/dut_*_post.spice`) and every bench runs on
-them via `run_ac(..., dut_ref=pex_sim.wrap_layout_dut("pam4", <netlist>))`.
-The `.spiceinit` (`set ngbehavior=hsa`) is mandatory — without it the HBT
-conducts 0 A silently; the Python runners write it automatically.
+Two things to know before re-running anything:
+
+- **Post-layout results reproduce without kpex.** The converted PEX netlists
+  are committed (`layout/out/pex/dut_*_post.spice`) and every bench runs on
+  them via `run_ac(..., dut_ref=pex_sim.wrap_layout_dut("pam4", <netlist>))`.
+- **The `.spiceinit` (`set ngbehavior=hsa`) is mandatory.** Without it the
+  HBT conducts 0 A silently. The Python runners write it automatically.
 
 ## Provenance
 
-Port of the EIC-designer `lumped-broadband-driver` verified reference,
-reproduced with zero delta on all 8 system metrics
-(`results/pam4_results.yaml`). Designed, laid out, verified, and
-re-optimized end-to-end by AI agents (Claude), including an independent
-multi-agent RF layout review; the notebooks and `report/` are the
-human-facing audit trail.
+- **Reference:** port of the EIC-designer `lumped-broadband-driver` verified
+  reference, reproduced with zero delta on all 8 system metrics
+  (`results/pam4_results.yaml`).
+- **Who did the work:** designed, laid out, verified and re-optimized end to
+  end by AI agents (Claude), including an independent multi-agent RF layout
+  review.
+- **Human-facing audit trail:** the four notebooks and `report/`.

@@ -30,8 +30,9 @@ Exit codes — a run that did not verify something never exits 0:
        not run, a number whose deck failed so its .csv on disk is the PREVIOUS
        run's (STALE), or a number on record the run did not produce (MISSING)
     2  the selection verified nothing at all — 0 checks, or a --step that names
-       no runnable step (empty / unknown). Not a pass; nothing is written to
-       last_run.json for an unusable --step, since no run happened.
+       no runnable step (empty / unknown). Not a pass; neither exit-2 path
+       writes last_run.json — nothing was verified, so the committed record of
+       the last real run is left alone.
 
 What is and is not checked (the coverage manifest below is the authority, and
 tests/test_verify_gate.py asserts it accounts for every key of expected.json):
@@ -261,13 +262,14 @@ def main() -> None:
     for t, k, u, g, e, ok in RESULTS:
         if not ok:
             print(f"   {t} {k}: got {g} expected {e}")
-    json.dump([dict(tier=t, key=k, got=g, expected=e, ok=ok) for t, k, u, g, e, ok in RESULTS],
-              open(os.path.join(HERE, "last_run.json"), "w"), indent=1, default=float)
     if n == 0:
         # "0/0 numbers reproduce" is not a pass: this run verified nothing (every step was a no-op
         # for every tier requested — e.g. only --step layout on tier a, which has no layout).
+        # Nothing is written: an empty record would clobber the tracked one for no verification.
         print("   nothing was verified — this is a failure, not a pass")
         raise SystemExit(2)
+    json.dump([dict(tier=t, key=k, got=g, expected=e, ok=ok) for t, k, u, g, e, ok in RESULTS],
+              open(os.path.join(HERE, "last_run.json"), "w"), indent=1, default=float)
     raise SystemExit(0 if n_ok == n else 1)
 
 

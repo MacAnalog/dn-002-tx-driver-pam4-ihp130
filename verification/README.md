@@ -6,8 +6,9 @@ root `README.md` results table, paper Table I) is reproducible with plain
 the shipped GDS. Two ways to do it:
 
 * **automatic** — `make verify-report` (= `uv run python verification/verify.py`,
-  ~10 min for tiers a–d incl. eyes (tier f adds the 10 000-symbol full-swing
-  eye, ~30 min on its own — `--no-eye` skips all eyes); `--tier f`, `--step sim|layout|regen`,
+  ~15 s for tiers a–d incl. eyes on this 16-core workstation (tier f adds the
+  10 000-symbol full-swing eye, ~1.5 min wall / ~10 min CPU on its own —
+  `--no-eye` skips all eyes); `--tier f`, `--step sim|layout|regen`,
   `--no-eye`): runs every deck, extracts every number, prints PASS/FAIL against
   `expected.json` (the values on record, frozen from `report/data/metrics.json`),
   and exits non-zero on any miss — on a number out of tolerance, on a deck ngspice
@@ -170,5 +171,6 @@ verification/
 `.gitignore` ignores `verification/decks/*/*.csv`; the seven primary CSVs of each
 of the tiers a–d (28 files) are nevertheless committed, force-added, so a reviewer
 can run `extract.py` without a simulator. Not committed: **every tier-f CSV** (that
-tier reproduces only by running its decks, including the ~30 min full-swing eye),
+tier reproduces only by running its decks, including the full-swing eye,
+~1.5 min wall / ~10 min CPU on this 16-core workstation),
 the `*_alg` twins' CSVs, and the `.log` files.

@@ -23,7 +23,6 @@ silently checked by nothing.
 
 No simulator, no PDK: `ngspice` is a stub script on PATH.
 """
-import json
 import os
 import shutil
 import sys
@@ -213,12 +212,14 @@ def test_zero_checks_exits_non_zero(tmp_path, monkeypatch, verify):
     """tier a has no layout/regen step: no check runs, and that is not a pass"""
     monkeypatch.setattr(verify, "HERE", str(tmp_path))            # last_run.json
     monkeypatch.setattr(sys, "argv", ["verify.py", "--tier", "a", "--step", "layout,regen"])
+    (tmp_path / "last_run.json").write_text("[1]")             # the record of a real run
 
     with pytest.raises(SystemExit) as e:
         verify.main()
 
     assert e.value.code == 2, f"0/0 numbers reproduce should be exit 2, got {e.value.code!r}"
-    assert json.load(open(tmp_path / "last_run.json")) == [], "a run that happened must leave its record"
+    assert (tmp_path / "last_run.json").read_text() == "[1]", (
+        "a run that verified nothing must not clobber the committed record")
 
 
 def test_unknown_step_exits_non_zero(tmp_path, monkeypatch, verify):
@@ -233,14 +234,3 @@ def test_unknown_step_exits_non_zero(tmp_path, monkeypatch, verify):
         f"an unknown --step verified nothing; the documented code for that is 2, got {e.value.code!r}")
     assert not os.path.exists(tmp_path / "last_run.json"), (
         "no run happened for an unusable --step, so it must not leave a run record")
-
-
-def test_last_run_json_is_written_even_when_nothing_ran(tmp_path, monkeypatch, verify):
-    """the record of a run must exist whatever the verdict"""
-    monkeypatch.setattr(verify, "HERE", str(tmp_path))
-    monkeypatch.setattr(sys, "argv", ["verify.py", "--tier", "a", "--step", "layout,regen"])
-
-    with pytest.raises(SystemExit):
-        verify.main()
-
-    assert json.load(open(tmp_path / "last_run.json")) == []
